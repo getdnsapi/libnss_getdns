@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "nsswitch.h"
+#include "logger.h"
 
 enum nss_status _nss_dns_gethostbyaddr2_r (const void *addr, socklen_t len, int af,
         struct hostent *result, char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp)

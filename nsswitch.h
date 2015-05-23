@@ -1,5 +1,13 @@
 #include <nss.h>
+#include <errno.h>
 #include <getdns/getdns_ext_libevent.h>
+
+#ifndef IN6ADDRSZ
+#define IN6ADDRSZ sizeof(struct in6_addr)
+#endif
+#ifndef INADDRSZ
+#define INADDRSZ sizeof(struct in_addr)
+#endif
 
 /*
 Convert getdns return values to NSS status codes

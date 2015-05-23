@@ -1,7 +1,7 @@
 #ifndef _GETDNS_NSS_SYSLG_
 #define _GETDNS_NSS_SYSLG_
 
-/*
+
 #if defined(__unix__)
 #include <syslog.h>
 #define err_log(args...) syslog (LOG_ERR, args)
@@ -17,9 +17,6 @@
 #endif
 #endif
 
-void no_op(){}
-*/
+static void no_op(){}
 
-#include <syslog.h>
-#define err_log(args...) syslog (LOG_ERR, args)
 #endif
