@@ -13,10 +13,8 @@
 #define err_log(args...) syslog (LOG_ERR, args)
 #endif
 #else
-#define err_log(args...) no_op()
+#define err_log(args...)
 #endif
 #endif
-
-static void no_op(){}
 
 #endif

@@ -23,7 +23,7 @@ int main(int argc , char *argv[])
      
     hostname_to_ip(hostname , ip, ip_2);
     printf("\n");
-    printf("getXXbyYY: %s resolved to %s\n" , hostname , ip);
+    //printf("getXXbyYY: %s resolved to %s\n" , hostname , ip);
     printf("getXXinfo: %s resolved to %s\n" , hostname , ip_2);
     printf("\n");
      
@@ -38,24 +38,26 @@ int hostname_to_ip(char * hostname , char* ip_getXXbyYY, char* ip_getXXinfo)
     /*
     Use gethostyname..........
     */    
-    if ( (he = gethostbyname( hostname ) ) == NULL)
+    /*if ( (he = gethostbyname( hostname ) ) == NULL)
     {
         herror("gethostbyname");
         return 1;
     }
+    
  
     addr_list = (struct in_addr **) he->h_addr_list;
-     
+    printf("h_name: %s\n", he->h_name);
     for(i = 0; addr_list[i] != NULL; i++)
     {
         strcpy(ip_getXXbyYY , inet_ntoa(*addr_list[i]) );
         break;//Return the first answer;
     }
+    */
     /*
     Use getaddrinfo...........
     */
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = PF_UNSPEC;
+    hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
     if( getaddrinfo(hostname, NULL, &hints, &res0) )
     {
