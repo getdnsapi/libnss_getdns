@@ -1,6 +1,7 @@
 #include <netdb.h>
-#include "nsswitch.h"
-
+#include <nss.h>
+#include <getdns/getdns.h>
+#include <errno.h>
 /*
 Convert getdns status codes & return values to NSS status codes, and set errno values
 */
