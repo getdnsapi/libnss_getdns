@@ -82,6 +82,20 @@ do {\
     }   \
 } while (0)
 
+#define DO_CHECK_PARAMS()	\
+do{	\
+    if(!name || !buflen || (!result && !result_addrtuple)){	\
+        getdns_process_statcode(GETDNS_RETURN_MEMORY_ERROR, &status, errnop, h_errnop);	\
+        err_log("GETDNS: Memory error...");	\
+        return status;	\
+    }	\
+    if( (af != AF_INET) && (af != AF_INET6) && (af != AF_UNSPEC) ){	\
+        getdns_process_statcode(GETDNS_RETURN_WRONG_TYPE_REQUESTED, &status, errnop, h_errnop);	\
+        err_log("GETDNS: Wrong type requested...");	\
+        return status;	\
+    }	\
+} while (0)
+
 /*
 Convert getdns status codes & return values to NSS status codes, and set errno values
 */
@@ -91,25 +105,16 @@ enum nss_status getdns_getaddrinfo(const char *name, int af, struct hostent *res
         char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp, char **canonp)
 {
     enum nss_status status = NSS_STATUS_NOTFOUND;
-    memset(buffer, 0, buflen);
-    uintptr_t pad = 0;//-(uintptr_t) buffer & __alignof__ (struct hostent_data);
-    buffer += pad;
-    buflen = buflen > pad ? buflen - pad : 0;
-    if(!name || !buflen || (!result && !result_addrtuple)){
-        getdns_process_statcode(GETDNS_RETURN_MEMORY_ERROR, &status, errnop, h_errnop);
-        err_log("GETDNS: Memory error...");
-        return status;
-    }
-     if( (af != AF_INET) && (af != AF_INET6) && (af != AF_UNSPEC) ){
-        getdns_process_statcode(GETDNS_RETURN_WRONG_TYPE_REQUESTED, &status, errnop, h_errnop);
-        err_log("GETDNS: Wrong type requested...");
-        return status;
-    }
     getdns_context *context = NULL;
     getdns_dict *extensions = NULL;
     getdns_dict *response = NULL;
     getdns_return_t return_code; 
     uint16_t request_type;
+    memset(buffer, 0, buflen);
+    uintptr_t pad = 0;//-(uintptr_t) buffer & __alignof__ (struct hostent_data);
+    buffer += pad;
+    buflen = buflen > pad ? buflen - pad : 0;
+    DO_CHECK_PARAMS();
     /*
     Create and check getdns context
     */
