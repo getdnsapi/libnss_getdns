@@ -69,7 +69,8 @@ int hostname_to_ip(char * hostname , char* ip_getXXbyYY, char* ip_getXXinfo)
     for(i = 0; addr_list[i] != NULL; i++)
     {
         strcpy(ip_getXXbyYY , inet_ntoa(*addr_list[i]) );
-        break;//Return the first answer;
+        printf("Addr[%d]: %s\n", i, ip_getXXbyYY);
+        //break;//Return the first answer;
     }
     
     /*
