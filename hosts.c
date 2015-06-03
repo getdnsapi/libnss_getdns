@@ -202,7 +202,7 @@ static getdns_return_t parse_response(const char *query, getdns_context *context
 {
 	getdns_return_t return_code = GETDNS_RETURN_GOOD;
 	uint16_t request_type;
-    uint32_t resp_status;
+    uint32_t resp_status = -1;
 	/*
     Perform lookup synchronously
     */

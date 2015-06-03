@@ -1,5 +1,6 @@
 #include "logger.h"
 #include "nss_getdns.h"
+#include <syslog.h>
 
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
@@ -55,6 +56,18 @@ enum nss_status _nss_getdns_gethostbyaddr_r (const void *addr, socklen_t len, in
 {
 	debug_log("GETDNS: gethostbyaddr!\n");
     return _nss_getdns_gethostbyaddr2_r (addr, len, af, result, buffer, buflen, errnop, h_errnop, NULL);
+}
+
+/*getaddrinfo, bsd-like version*/
+enum nss_status _nss_getdns_getaddrinfo (const char *name, int af, struct addrinfo *result, 
+        char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp)
+{
+	
+    enum nss_status status;
+    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}};
+    status = getdns_gethostinfo(name, af, &result_ptr, buffer, buflen, errnop, h_errnop, ttlp, NULL);
+    debug_log("GETDNS: getaddrinfo <%s>: STATUS: %d\n", name, status);
+    return status;
 }
 
 /*gethostbyname4_r sends out parallel A and AAAA queries*/
