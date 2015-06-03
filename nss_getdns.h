@@ -12,7 +12,7 @@
 
 typedef enum {ADDR_HOSTENT, ADDR_GAIH, ADDR_ADDRINFO, ADDR_SERVENT, REV_HOSTENT} addr_param_t;
 
-/*
+#if defined(__FreeBSD__)
 struct gaih_addrtuple
   {
     struct gaih_addrtuple *next;
@@ -20,7 +20,8 @@ struct gaih_addrtuple
     int family;
     uint32_t addr[4];
     uint32_t scopeid;
-  };*/
+  };
+#endif
 
 struct addr_param
 	{

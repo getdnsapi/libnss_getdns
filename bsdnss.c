@@ -2,13 +2,13 @@
 #include <errno.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <nss.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include "logger.h"
-#include "test/nsswitch.h"
 
-#if defined(BSD)
+#if defined(__FreeBSD__)
 #define  UNUSED_PARAM(x) ((void)(x))
 
 #define BUFFER_SIZE 1024
@@ -128,7 +128,7 @@ int __bsdnss_gethostbyaddr(void *rval, void *cb_data, va_list ap)
   errnop = va_arg(ap, int*);
   api_funct = cb_data;
   status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
-  status = __nss_compat_result(status, errnop);
+  status = __nss_compat_result(status, *errnop);
   if(status == NSS_STATUS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
@@ -159,7 +159,7 @@ int __bsdnss_gethostbyaddr2(void *rval, void *cb_data, va_list ap)
   errnop = va_arg(ap, int*);
   api_funct = cb_data;
   status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
-  status = __nss_compat_result(status, errnop);
+  status = __nss_compat_result(status, *errnop);
   if(status == NSS_STATUS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;

@@ -1,5 +1,5 @@
 CC = cc
-MODULE_NAME = libnss_getdns.so.2
+MODULE_NAME = nss_getdns.so.1
 INSTALL_PATH = /opt/lib
 LIBS_PATH = /usr/lib
 LIBNAME = getdns-1.15.so
