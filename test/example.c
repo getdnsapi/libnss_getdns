@@ -5,8 +5,13 @@
 #include <inttypes.h>
 #include <getdns/getdns.h>
 
-int main()
+int main(int argc, char **argv)
 {
+	if(argc < 2)
+	{
+		fprintf(stderr, "Usage: %s <hostname> \n", argv[0]);
+		return 1;
+	}
     getdns_return_t this_ret;  /* Holder for all function returns */
     /* Create the DNS context for this call */
     getdns_context *this_context = NULL;
@@ -17,7 +22,7 @@ int main()
         return(GETDNS_RETURN_GENERIC_ERROR);
     }
     /* Set up the getdns_sync_request call */
-    const char * this_name  = "smartrwanda.org";
+    const char * this_name  = argv[1];
     uint8_t this_request_type = GETDNS_RRTYPE_A;
     /* Get the A and AAAA records */
     getdns_dict * this_extensions = getdns_dict_create();

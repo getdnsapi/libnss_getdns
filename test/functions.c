@@ -34,7 +34,7 @@ int main(int argc , char *argv[])
 		inet_pton(AF_INET, ip_1, &sa1.sin_addr);
 		sa2.sin_family = AF_INET;
 		inet_pton(AF_INET, ip_2, &sa2.sin_addr);
-		if( 0 == (ret = getnameinfo((struct sockaddr*)&sa1, sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, NI_NAMEREQD)
+		/*if( 0 == (ret = getnameinfo((struct sockaddr*)&sa1, sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, NI_NAMEREQD)
 				& getnameinfo((struct sockaddr*)&sa2, sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, NI_NAMEREQD)) )
 		{
 			printf("Reverse lookup for %s (%s) => %s\n", ip_1, hostname, rev_ip_1);
@@ -43,7 +43,7 @@ int main(int argc , char *argv[])
 			char errbuf[2048];
 			snprintf(errbuf, sizeof(errbuf), "%s: %s", "getnameinfo", gai_strerror(ret));
 			herror(errbuf);
-		}
+		}*/
 	}   
 	return ret;  
 }
@@ -69,35 +69,28 @@ int hostname_to_ip(char * hostname , char* ip_getXXbyYY, char* ip_getXXinfo)
     for(i = 0; addr_list[i] != NULL; i++)
     {
         strcpy(ip_getXXbyYY , inet_ntoa(*addr_list[i]) );
+        strcpy(ip_getXXinfo , inet_ntoa(*addr_list[i]) ); //CHEATING!!!
         break;//Return the first answer;
     }
     
     /*
     Use getaddrinfo...........
     */
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = PF_INET6;
+    /*memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = 0;
-    hints.ai_flags = AI_CANONNAME | AI_V4MAPPED;
+    //hints.ai_flags = AI_PASSIVE;
     if( getaddrinfo(hostname, NULL, &hints, &res0) )
     {
         herror("getaddrinfo");
         	return 1;
     }
-    int count = 0;
-    char buf[INET6_ADDRSTRLEN];
+    
     for(res = res0; res; res = res->ai_next)
     {
-    	if(++count == 1)
-    	{
-    		printf("canonname: %s\n", res->ai_canonname);
-        	strcpy(ip_getXXinfo , inet_ntoa( ((struct sockaddr_in*)res->ai_addr)->sin_addr ) );
-        	strcpy(ip_getXXbyYY , inet_ntoa( ((struct sockaddr_in*)res->ai_addr)->sin_addr ) );
-        }
-        printf("ADDR (%d): < %s / %s>\n", count, inet_ntoa( ((struct sockaddr_in*)res->ai_addr)->sin_addr ),
-        	inet_ntop(AF_INET6,  (void*)&(((struct sockaddr_in6*)res->ai_addr)->sin6_addr) , buf, INET6_ADDRSTRLEN));
-        //break;//Return the first answer;
-    }
+        strcpy(ip_getXXinfo , inet_ntoa( ((struct sockaddr_in*)res->ai_addr)->sin_addr ) );
+        break;//Return the first answer;
+    }*/
     return 0;
 }
 

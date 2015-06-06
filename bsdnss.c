@@ -6,6 +6,7 @@
 #include <nss.h>
 #include <netdb.h>
 #include <stdlib.h>
+#include "nss_getdns.h"
 #include "logger.h"
 
 #if defined(__FreeBSD__)
@@ -33,6 +34,9 @@ extern enum nss_status _nss_getdns_gethostbyname3_r (const char*, int, struct ho
         char*, size_t, int*, int*, int32_t*, char**);
 extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo*,
 	char*, size_t, int*, int*, int32_t*);
+	
+extern int __nss_mod_init();
+extern void __nss_mod_destroy();
 
 extern int getdns_mirror_getaddrinfo(const char*, const char*, const struct addrinfo*, struct addrinfo**);
 extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t salen, char*, size_t, char*, size_t, int);
@@ -46,6 +50,7 @@ static ns_mtab methods[]={
   { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_mirror_getaddrinfo },
   { NSDB_HOSTS, "getnameinfo", &__bsdnss_gethostbyname2, &getdns_mirror_getnameinfo }
 };
+
 /*
 The functions below are implemented following a documentation for the nsdispatch() function in NetBSD 6.1.5 man-pages.
 The functions are noted to not follow the standard calling convention for the standard nsdispatch API until changed in "the future",
@@ -223,10 +228,21 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
   return status;
 }
 
+void nss_module_unregister(ns_mtab *mtab, u_int nelems)
+{
+	__nss_mod_destroy();
+}
+
 ns_mtab *nss_module_register(const char *source, unsigned int *mtabsize, nss_module_unregister_fn *unreg)
 {
-  *mtabsize=sizeof(methods)/sizeof(methods[0]);
-  *unreg=NULL;
+  if( __nss_mod_init() == 0)
+  {
+  	*mtabsize=sizeof(methods)/sizeof(methods[0]);
+  	*unreg = &nss_module_unregister;
+  }else{
+  	*mtabsize=sizeof(methods)/sizeof(methods[0]);
+  	*unreg=NULL;
+  }
   return methods;
 }
 #endif

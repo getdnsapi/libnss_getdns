@@ -33,5 +33,6 @@ struct addr_param
 		struct addrinfo *p_addrinfo;
 		struct servent *p_servent;
 		} addr_entry;
+		struct addrinfo *hints;
 	};
 #endif

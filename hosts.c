@@ -8,6 +8,16 @@
 #include "logger.h"
 #include "nss_getdns.h"
 
+
+static const getdns_bindata TYPE_IPv4 = {4, (void *)"IPv4"};
+static const getdns_bindata TYPE_IPv6 = {16, (void *)"IPv6"};
+extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
+extern void v42v6_map(char*);
+
+#define  UNUSED_PARAM(x) ((void)(x))
+
+#define COPY_ADDRINFO_PARAMS(res, flags, family, socktype, protocol, addr, addrlen, canonname)
+
 /*static getdns_return_t extract_cname(getdns_dict *response_tree, char *intern_buffer, size_t *buflen, char **ret)
 {
 	getdns_bindata *c_name = NULL;
@@ -115,6 +125,103 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
 	return return_code;
 }
 
+static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinfo *hints, getdns_list *replies_tree, uint32_t rr_type_filter)
+{
+	getdns_return_t return_code = GETDNS_RETURN_GOOD;
+	size_t reply_idx, num_replies;
+	struct addrinfo *ai, *result_ptr;
+	struct sockaddr *addr;
+	int addrsize;
+	return_code = getdns_list_get_length(replies_tree, &num_replies);
+	if(num_replies < 1){
+        return GETDNS_RESPSTATUS_NO_NAME;
+    }
+	memset(result, 0, sizeof(struct addrinfo)); 
+	addrsize = (hints->ai_family == AF_INET6 ? INET6_ADDRSTRLEN : INET_ADDRSTRLEN);  
+	size_t tot_answers = 0;
+	for(reply_idx = 0; reply_idx < num_replies; ++reply_idx)
+	{
+		getdns_dict *tmp_reply;
+		return_code = getdns_list_get_dict(replies_tree, reply_idx, &tmp_reply);
+		getdns_list* answers;
+		return_code = getdns_dict_get_list(tmp_reply, "answer", &answers);
+		size_t num_answers;
+        getdns_list_get_length(answers, &num_answers);
+        tot_answers += num_answers;
+	}
+	ai = NULL, result_ptr = NULL;
+	for(reply_idx = 0; reply_idx < num_replies; ++reply_idx)
+	{
+		getdns_dict *cur_reply;
+		return_code = getdns_list_get_dict(replies_tree, reply_idx, &cur_reply);
+		getdns_list* answers;
+		return_code = getdns_dict_get_list(cur_reply, "answer", &answers);
+		size_t num_answers;
+        return_code = getdns_list_get_length(answers, &num_answers);
+        size_t answer_idx;
+        for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
+        {
+        	getdns_dict * rr;
+        	uint32_t rr_type;
+            return_code = getdns_list_get_dict(answers, answer_idx, &rr);
+        	return_code = getdns_dict_get_int(rr, "type", &rr_type); 
+        	/*
+        	*Disregard address that do not match the requested type unless 
+        	*(1)we should map IPv4 to IPv6 addresses
+        	*or
+        	*(2)we have AI_V4MAPPED and AI_ALL set with AF_INET6
+        	*/
+        	if ( (rr_type == rr_type_filter) || ((rr_type == GETDNS_RRTYPE_A) && (hints->ai_flags & AI_V4MAPPED) && hints->ai_family == AF_INET6) )
+        	{
+        		getdns_dict *rdata;
+        		getdns_bindata *rdata_raw;
+        		return_code = getdns_dict_get_dict(rr, "rdata", &rdata); 
+        		return_code = getdns_dict_get_bindata(rdata, "rdata_raw", &rdata_raw);
+        		ai = malloc(sizeof(struct addrinfo)); 
+        		if(ai == NULL)
+        		{
+        			err_log("Memory error (MALLOC).\n");
+        			return GETDNS_RETURN_MEMORY_ERROR;
+        		}
+        		memset(ai, 0, sizeof(struct addrinfo));
+        		addrsize = (rr_type == GETDNS_RRTYPE_A) ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN;
+        		char *addr_data = (char*)(rdata_raw->data);
+        		if(((rr_type == GETDNS_RRTYPE_A) && (hints->ai_flags & AI_V4MAPPED) && hints->ai_family == AF_INET6))
+        		{
+        			v42v6_map(addr_data);
+        		}
+        		addr = (struct sockaddr*)addr_data;
+        		UNUSED_PARAM(addrsize);
+        		UNUSED_PARAM(addr);
+        		COPY_ADDRINFO_PARAMS(ai, hints->ai_flags, hints->ai_family, hints->ai_socktype, hints->ai_protocol, addr, addrsize, NULL);
+        		char cname_buf[NI_MAXHOST], *tmp_name; 
+        		size_t buflen = NI_MAXHOST;
+        		if(extract_cname("canonical_name", rdata, cname_buf, &buflen, &tmp_name) == GETDNS_RETURN_GOOD)
+        		{
+        			ai->ai_canonname = strndup(cname_buf, NI_MAXHOST);
+        			if(ai->ai_canonname == NULL)
+        			{
+        				err_log("Memory error (strndup).\n");
+        				free(ai);
+        				getdns_mirror_freeaddrinfo(result_ptr);
+        				return GETDNS_RETURN_MEMORY_ERROR;
+        			}        		
+        		}else{
+        			ai->ai_canonname = NULL;
+        		}
+        		if(result_ptr != NULL){
+					result_ptr->ai_next = ai;
+				}   
+				else{
+					*result = ai;
+				}
+				result_ptr = ai;
+        	}
+        }
+	}
+	return return_code;
+}
+
 /*
 The following macro extracts answers into a gaih_addruple struct.
 It is called from getdns_gethostinfo().
@@ -187,9 +294,6 @@ extern void getdns_process_statcode(uint32_t status, enum nss_status *nss_code, 
 Retrieve system global getdns context and default extensions
 */
 extern getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext);
-
-static const getdns_bindata TYPE_IPv4 = {4, (void *)"IPv4"};
-static const getdns_bindata TYPE_IPv6 = {16, (void *)"IPv6"};
 
 /*
 Extract one of the top-level nodes in the replies_tree
@@ -286,7 +390,10 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
     	TODO: The EXTRACT_ADDRTUPLE macro is ugly...
     	*/
         EXTRACT_ADDRTUPLE();
-    }else{
+    }else if(result_ptr->addr_type == ADDR_ADDRINFO){
+    	return_code =  extract_addrinfo(result_ptr->addr_entry.p_addrinfo, result_ptr->addr_entry.hints, addr_list, rr_type_filter);
+    }    
+    else{
         return_code = extract_hostent(result_ptr->addr_entry.p_hostent, addr_list, af, rr_type_filter, intern_buffer, &buflen);
     }   
     end:
