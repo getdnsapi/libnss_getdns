@@ -78,7 +78,7 @@ int hostname_to_ip(char * hostname , char* ip_getXXbyYY, char* ip_getXXinfo)
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = PF_INET6;
     hints.ai_socktype = 0;
-    hints.ai_flags = AI_CANONNAME | AI_V4MAPPED;
+    hints.ai_flags = AI_CANONNAME | AI_ALL | AI_V4MAPPED;
     if( getaddrinfo(hostname, NULL, &hints, &res0) )
     {
         herror("getaddrinfo");

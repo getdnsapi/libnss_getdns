@@ -1,15 +1,21 @@
+#include <resolv.h>
 #include "logger.h"
 #include "nss_getdns.h"
-#include <syslog.h>
 
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
+extern struct __res_state _res;
 
 getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GOOD; 
 	if(!context)
-	{
+	{	
+		/*
+		*Initialize resolver configuration from conf files (resolv.conf)
+		*/
+		if(res_init() == -1)
+			return GETDNS_RETURN_BAD_CONTEXT;
 		/*
 		Create and check getdns context
 		*/
@@ -35,6 +41,19 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 	*ctx = context;
 	*ext = extensions;
 	return return_code;
+}
+
+int __nss_mod_init()
+{
+	return load_context(&context, &extensions) == GETDNS_RETURN_GOOD ? 0 : -1;
+}
+
+void __nss_mod_destroy()
+{
+	if(context != NULL)
+		getdns_context_destroy(context);
+	if(extensions != NULL)
+		getdns_dict_destroy(extensions);
 }
 
 extern enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
@@ -104,9 +123,9 @@ enum nss_status _nss_getdns_gethostbyname_r (const char *name, struct hostent *r
 {
 	debug_log("GETDNS: gethostbyname!\n");
     enum nss_status status = NSS_STATUS_NOTFOUND;
-    /*if (_res.options & RES_USE_INET6)
+    if (_res.options & RES_USE_INET6)
         status = _nss_getdns_gethostbyname3_r (name, AF_INET6, result, buffer,
-					buflen, errnop, h_errnop, NULL, NULL);*/
+					buflen, errnop, h_errnop, NULL, NULL);
     if (status == NSS_STATUS_NOTFOUND)
         status = _nss_getdns_gethostbyname3_r (name, AF_INET, result, buffer,
 					buflen, errnop, h_errnop, NULL, NULL);
