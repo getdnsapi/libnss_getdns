@@ -78,13 +78,13 @@ enum nss_status _nss_getdns_gethostbyaddr_r (const void *addr, socklen_t len, in
 }
 
 /*getaddrinfo, bsd-like version*/
-enum nss_status _nss_getdns_getaddrinfo (const char *name, int af, struct addrinfo *result, 
-        char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp)
+enum nss_status _nss_getdns_getaddrinfo (const char *name, int af, struct addrinfo **result, struct addrinfo *hints, int *errnop, int *h_errnop)
 {
 	
     enum nss_status status;
-    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}};
-    status = getdns_gethostinfo(name, af, &result_ptr, buffer, buflen, errnop, h_errnop, ttlp, NULL);
+    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=hints};
+    char bufplholder[4];
+    status = getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, errnop, h_errnop, NULL, NULL);
     debug_log("GETDNS: getaddrinfo <%s>: STATUS: %d\n", name, status);
     return status;
 }
