@@ -30,7 +30,7 @@ struct addr_param
 		{
 		struct hostent *p_hostent;
 		struct gaih_addrtuple **p_gaih;
-		struct addrinfo *p_addrinfo;
+		struct addrinfo **p_addrinfo;
 		struct servent *p_servent;
 		} addr_entry;
 		struct addrinfo *hints;

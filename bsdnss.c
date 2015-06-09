@@ -32,13 +32,12 @@ extern enum nss_status _nss_getdns_gethostbyaddr2_r (const void*, socklen_t, int
         struct hostent*, char*, size_t, int*, int*, int32_t*);
 extern enum nss_status _nss_getdns_gethostbyname3_r (const char*, int, struct hostent*, 
         char*, size_t, int*, int*, int32_t*, char**);
-extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo*,
-	char*, size_t, int*, int*, int32_t*);
+extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
 	
 extern int __nss_mod_init();
 extern void __nss_mod_destroy();
 
-extern int getdns_mirror_getaddrinfo(const char*, const char*, const struct addrinfo*, struct addrinfo**);
+extern int getdns_getaddrinfo(const char*, const char*, const struct addrinfo*, struct addrinfo**, enum nss_status*);
 extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t salen, char*, size_t, char*, size_t, int);
 extern enum nss_status eai2nss_code(int);
 
@@ -47,8 +46,9 @@ static ns_mtab methods[]={
   { NSDB_HOSTS, "gethostbyname2_r", &__bsdnss_gethostbyname2, &_nss_getdns_gethostbyname2_r },
   { NSDB_HOSTS, "gethostbyaddr_r", &__bsdnss_gethostbyaddr, &_nss_getdns_gethostbyaddr_r },
   { NSDB_HOSTS, "gethostbyaddr2_r", &__bsdnss_gethostbyaddr2, &_nss_getdns_gethostbyaddr2_r },
-  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_mirror_getaddrinfo },
-  { NSDB_HOSTS, "getnameinfo", &__bsdnss_gethostbyname2, &getdns_mirror_getnameinfo }
+  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_getaddrinfo },
+  { NSDB_HOSTS, "getnameinfo", &__bsdnss_gethostbyname2, &getdns_mirror_getnameinfo },
+  { NSDB_HOSTS, "freeaddrinfo", &__bsdnss_freeaddrinfo, &getdns_mirror_freeaddrinfo}
 };
 
 /*
@@ -177,7 +177,7 @@ int __bsdnss_gethostbyaddr2(void *rval, void *cb_data, va_list ap)
 int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
 {
   enum nss_status status;
-  enum nss_status (*api_funct)(const char*, const char*, const struct addrinfo*, struct addrinfo**);
+  enum nss_status (*api_funct)(const char*, const char*, const struct addrinfo*, struct addrinfo**, enum nss_status*);
   char *hostname, *servname;
   const struct addrinfo *hints;
   struct addrinfo **result;
@@ -187,9 +187,8 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
   hints = va_arg(ap, const struct addrinfo*);
   result = va_arg(ap, struct addrinfo**);
   api_funct = cb_data;
-  ret = api_funct(hostname, servname, hints, result);
-  status = eai2nss_code(ret);
-  if(status == NSS_STATUS_SUCCESS)
+  ret = api_funct(hostname, servname, hints, result, &status);
+  if(status == NSS_STATUS_SUCCESS && ret == 0)
   {
     rval = result;
 
@@ -218,6 +217,7 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
   flags = va_arg(ap, int);
   api_funct = cb_data;
   ret = api_funct(sa, salen, host, hostlen, serv, servlen, flags);
+  errno = ret;
   status = eai2nss_code(ret);
   if(status != NSS_STATUS_SUCCESS)
   {
@@ -226,6 +226,15 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
   }
   err_log("BSDNSS: getnameinfo(HOST:%s, SERV:%s): %d\n", host, serv, status);
   return status;
+}
+
+void __bsdnss_freeaddrinfo(void *rval, void *cb_data, va_list ap)
+{
+  const struct sockaddr *sa;
+  void (*api_funct)(struct sockaddr*);
+  sa = va_arg(ap, const struct sockaddr*);
+  api_funct = cb_data;
+  api_funct(sa);
 }
 
 void nss_module_unregister(ns_mtab *mtab, u_int nelems)

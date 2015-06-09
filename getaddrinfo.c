@@ -18,33 +18,19 @@ Supported ERRORS:
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <nss.h>
+#include "logger.h"
+#include "addr_utils.h"
 
-#define  UNUSED_PARAM(x) ((void)(x))
+#define  UNUSED_PARAM(x) ((void)(x))	
 
-#define AI_MASK (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_NUMERICSERV | AI_V4MAPPED | AI_ALL | AI_ADDRCONFIG)
-#define SOCKADDR(addr)	((struct sockaddr *)(addr))
-#define SOCKADDR_IN(addr)	((struct sockaddr_in *)(addr))
-#define SOCKADDR_IN6(addr)	((struct sockaddr_in6 *)(addr))
-#define IN6(addr)	((struct in6_addr *)(addr))
-
-#define COPY_ADDRINFO_PARAMS(res, flags, family, socktype, protocol, addr, addrlen, canonname) /* \
-do{	\
-	(res)->ai_flags = flags;	\
-    (res)->ai_family = family;	\
-    (res)->ai_socktype = socktype;	\
-    (res)->ai_protocol = protocol;	\
-    (res)->ai_addrlen = addrlen;	\
-    (res)->ai_addr = addr;	\
-    (res)->ai_canonname = canonname;	\
-    (res)->ai_next = NULL;	\
-}while (0)	
-*/
 void getdns_mirror_freeaddrinfo(struct addrinfo*);
 extern void v42v6_map(char*);
+extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*, int*, int*);
+extern void *addr_data_ptr(struct sockaddr_storage*);
 
 int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int *hint_err)
 {
@@ -52,12 +38,13 @@ int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int
 	if ((hints->ai_flags & ~(AI_MASK)) != 0)
 	{
 		*hint_err = EAI_BADFLAGS;
+		errno = EINVAL;
 		return -1;
 	}
 	if (hints->ai_addrlen || hints->ai_canonname || hints->ai_addr || hints->ai_next)
 	{
-			errno = EINVAL;
 			*hint_err = EAI_SYSTEM;
+			errno = EINVAL;
 			return -1;
 	}
 	switch (hints->ai_family)
@@ -68,10 +55,13 @@ int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int
 			break;
 		default:
 			*hint_err = EAI_FAMILY;
+			errno = EAFNOSUPPORT;
 			return -1;
 	}
 	switch (hints->ai_socktype)
 	{
+		case 0: /*socket type not specified:addresses of any type can be returned.*/
+				break;
 		case SOCK_STREAM:
 			protocol = "tcp";
 			break;
@@ -82,6 +72,7 @@ int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int
 			break;
 		default:
 			*hint_err = EAI_SOCKTYPE;
+			errno = EPROTONOSUPPORT;
 			return -1;
 	}	
 	return 0;
@@ -98,7 +89,7 @@ int service_lookup(const char *servname, const char *protocol, int *port, struct
 	*port = strtol(servname, &endptr, 10);
 	if (*endptr != '\0') {
 		*srvptr = getservbyname(servname, protocol);
-		if (srvptr == NULL)
+		if (*srvptr == NULL)
 		{
 			*err = EAI_SERVICE;
 			return -1;
@@ -111,22 +102,32 @@ int service_lookup(const char *servname, const char *protocol, int *port, struct
 			return -1;
 		}
 		*port = htons((unsigned short) (*port));
+		*srvptr = getservbyport(*port, protocol);
 	}
-	return 0;
+	*err = (*srvptr == NULL) ? EAI_SERVICE : 0;
+	return *err == 0 ? 0 : -1;
 }
 
 int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
 	struct addrinfo **res)
 {
-	
+	enum nss_status status = NSS_STATUS_NOTFOUND;
+	return getdns_getaddrinfo(hostname, servname, hints, res, &status);
+}
+
+int getdns_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
+	struct addrinfo **res, enum nss_status *status)
+{
 	struct servent *service_ptr;
 	const char *proto;
 	int family, socktype, flags, protocol;
 	struct addrinfo *temp_ai;
 	int err = 0;
-	int port;
+	int port = 0;
 	temp_ai = NULL;
 	proto = NULL; 
+	service_ptr = NULL;
+	*res = NULL;
 	if(hints == NULL)
 	{
 		protocol = 0;
@@ -140,44 +141,43 @@ int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const 
 		protocol = hints->ai_protocol;
 		flags = hints->ai_flags;
 	}else{
-		return err;
+		err_log("getdns_mirror_getaddrinfo: BAD HINTS. Error: %d / %d / %d\n", err, hints->ai_socktype, SOCK_RAW);
+		return eai2nss_code(err, status);
 	}
 	if ( (hostname == NULL && servname == NULL)
 		|| (hostname == NULL && (flags & AI_NUMERICHOST) != 0) /*There should be no name resolution here!*/
 		|| (servname == NULL && (flags & AI_NUMERICSERV) != 0) /*There should be no service resolution here!*/)
 	{
-		return EAI_NONAME;
+		return eai2nss_code(EAI_NONAME, status);
 	}
-	/*
-	 * Look up the service name (port) if it was requested.
-	 */
-	 if(service_lookup(servname, proto, &port, &service_ptr, &err) != 0)
-	 {
-	 	return err;
-	 }
-	 /*If the socket type wasn't specified, try to figure it out from the service
-	 */
-	 if (socktype == 0)
-	 {
-		if (strcmp(service_ptr->s_proto, "tcp") == 0)
-			socktype = SOCK_STREAM;
-		else if (strcmp(service_ptr->s_proto, "udp") == 0)
-			socktype = SOCK_DGRAM;
-		else /*Give up, we could not figure out which socket type so far*/
-			return EAI_SOCKTYPE;
-	 }	
-	 /*
-	 *AI_V4MAPPED with family==AF_INET6
-	 */
-	 if( (flags & AI_V4MAPPED) != 0 && family == AF_INET6)
-	 {
-		 /*
-		 *AI_ALL with AI_V4MAPPED and family=AF_INET6 must retrieve both IPv4 and IPv6, so set family to AF_UNSPEC?
+	if(servname != NULL)
+	{
+		/*
+		 * Look up the service name (port) if it was requested.
 		 */
-	 	 if(flags & AI_ALL)
+		 if(service_lookup(servname, proto, &port, &service_ptr, &err) != 0)
 		 {
-		 	family = AF_UNSPEC;
+		 	return eai2nss_code(err, status);
 		 }
+		 /*If the socket type wasn't specified, try to figure it out from the service
+		 */
+		 if (socktype == 0)
+		 {
+			if (strcmp(service_ptr->s_proto, "tcp") == 0)
+				socktype = SOCK_STREAM;
+			else if (strcmp(service_ptr->s_proto, "udp") == 0)
+				socktype = SOCK_DGRAM;
+			else /*Give up, we could not figure out which socket type so far*/
+				return eai2nss_code(EAI_SOCKTYPE, status);
+		 }
+	}	
+	 /*
+	 *AI_V4MAPPED without AF_INET6 must be ignored;
+	 *AI_ALL without AI_V4MAPPED must be ignored
+	 */
+	 if( (flags & AI_V4MAPPED) == 0 || family != AF_INET6)
+	 {
+	 	flags &= ~(AI_V4MAPPED | AI_ALL);
 	 }
 	/*
 	 * Handle AI_NUMERICHOST or no family specified
@@ -189,48 +189,43 @@ int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const 
 		char addrbuf[sizeof(struct in6_addr)];
 		int parsedv4, parsedv6,
 		addrsize, addroff;
-		if(hostname == NULL 
-			|| ( (0 == (parsedv4 = inet_pton(AF_INET, hostname, addrbuf)))
+		if(( family != 0 && hostname != NULL) 
+			&& ( (0 == (parsedv4 = inet_pton(AF_INET, hostname, addrbuf)))
 			&& (0 == (parsedv6 = inet_pton(AF_INET, hostname, addrbuf)))))
 		{
 			/*hostname is not a numeric host address string*/
-			return EAI_NONAME;
+			return eai2nss_code(EAI_NONAME, status);
 		}
-		if(family == AF_INET6)
+		if(parsedv4 && family == AF_INET6)
 		{
-			if(parsedv4)
-			{
-				v42v6_map(addrbuf);
-			}
-			addrsize = sizeof(struct in6_addr);
-			addroff = (char *)(&SOCKADDR_IN6(0)->sin6_addr) - (char *)0;
-		}else{
-			addrsize = sizeof(struct in_addr);
-			addroff = (char *)(&SOCKADDR_IN(0)->sin_addr) - (char *)0;
-			family = AF_INET;
+			v42v6_map(addrbuf);
 		}
-		temp_ai = malloc(((family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in)));
+		temp_ai = _allocaddrinfo(family);
 		if(temp_ai == NULL)
 		{
-			return EAI_MEMORY;
+			return eai2nss_code(EAI_MEMORY, status);
 		}
-		memset(temp_ai, 0, sizeof(struct sockaddr_in6));
+		SET_AF_PORT(temp_ai->ai_addr, port);
 		temp_ai->ai_socktype = socktype;
-		memmove((char *)temp_ai->ai_addr + addroff, addrbuf, addrsize);
+		addrsize = (family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+		memcpy(addr_data_ptr((struct sockaddr_storage*)(temp_ai->ai_addr)), addrbuf, addrsize);
 		if((flags & AI_CANONNAME) != 0)
 		{
 			char namebuf[NI_MAXHOST];
 			if(getnameinfo(temp_ai->ai_addr, (socklen_t)temp_ai->ai_addrlen, namebuf, sizeof(namebuf), NULL, 0, NI_NUMERICHOST) == 0) {
 					temp_ai->ai_canonname = strndup(namebuf, NI_MAXHOST);
 					if(temp_ai->ai_canonname == NULL) {
-						getdns_mirror_freeaddrinfo(temp_ai);
-						return EAI_MEMORY;
+						__freeaddrinfo(temp_ai);
+						return eai2nss_code(EAI_MEMORY, status);
 					}
 				}else{
 					temp_ai->ai_canonname = NULL;
 				}
 		}
-		goto end;
+		if((flags & AI_NUMERICHOST) != 0)
+		{
+			goto end;
+		}
 	}
 	/*
 	* hostname not specified:
@@ -248,40 +243,55 @@ int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const 
 			else
 				((struct sockaddr_in6*)(temp_ai->ai_addr))->sin6_addr = in6addr_any;
 		}else{
-			((struct sockaddr_in*)(temp_ai->ai_addr))->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			if(family == AF_INET)
+				((struct sockaddr_in*)(temp_ai->ai_addr))->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			else
+				((struct sockaddr_in6*)(temp_ai->ai_addr))->sin6_addr = in6addr_loopback;
 		}
-		if( (temp_ai = malloc(sizeof(struct addrinfo))) == NULL)
+		if( (temp_ai = _allocaddrinfo(family)) == NULL)
 		{
 			return EAI_MEMORY;
 		}
 		UNUSED_PARAM(addrlen);
 		UNUSED_PARAM(protocol);
 		COPY_ADDRINFO_PARAMS(temp_ai, flags, family, socktype, protocol, temp_ai->ai_addr, addrlen, NULL);
+		goto end;
 	}
-	if(temp_ai == NULL)
+	/*
+	*If AI_ADDRCONFIG is set, restrict which addresses can be returned.
+	*/
+	if((flags & AI_ADDRCONFIG) != 0)
 	{
-		/*
-		*If AI_ADDRCONFIG is set, restrict which addresses can be returned.
-		*/
-		if((flags & AI_ADDRCONFIG) != 0)
-		{
-		/*XXX : How do we figure out that IPv4 or/and IPv6 is configured on the local system? The _res global?*/
-		}
-		/*
-		NOW RESOLVE NAME!!!!!!!!!!
-		*/
+	/*XXX : How do we figure out that IPv4 or/and IPv6 is configured on the local system? The _res global?*/
 	}
-	if (temp_ai == NULL) {
-		if (err == 0)
-			err = EAI_NONAME;
-		return err;
+	/*
+	NOW RESOLVE NAME!!!!!!!!!!
+	*/
+	int h_errnop = 0;
+	struct addrinfo query_hints = {.ai_family = family, .ai_socktype = socktype, .ai_protocol = protocol, .ai_flags = flags};
+	__freeaddrinfo(temp_ai);
+	temp_ai = NULL;
+	*status = _nss_getdns_getaddrinfo(hostname, family, &temp_ai, &query_hints, &err, &h_errnop);
+	if( (*status == NSS_STATUS_NOTFOUND) &&  ((hints->ai_flags & AI_V4MAPPED) != 0 && family == AF_INET6) )
+	{
+		query_hints.ai_flags |= AI_V4MAPPED;
+		*status = _nss_getdns_getaddrinfo(hostname, AF_INET, &temp_ai, &query_hints, &err, &h_errnop);
 	}
 	end:
+		if (temp_ai == NULL || *status != NSS_STATUS_SUCCESS)
+		{
+			if (err == 0)
+			{
+				err = EAI_NONAME; 
+			}
+			temp_ai = NULL;
+			return err;
+		}
 		*res = temp_ai;	
-	return 0;
+		return eai2nss_code(0, status);
 }
 
 void getdns_mirror_freeaddrinfo(struct addrinfo *ai)
 {
-
+	__freeaddrinfo(ai);
 }
