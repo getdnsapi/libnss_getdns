@@ -2,6 +2,17 @@
 #include "logger.h"
 #include "nss_getdns.h"
 
+
+/*
+Convert getdns status codes & return values to NSS status codes, and set errno values
+*/
+extern void getdns_process_statcode(uint32_t status, enum nss_status *nss_code, int *errnop, int *h_errnop);
+/*
+*NSS wrapper around getdns!
+*/
+extern getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
+        char *buffer, size_t buflen, int32_t *ttlp, char **canonp);
+        
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
 extern struct __res_state _res;
@@ -54,18 +65,16 @@ void __nss_mod_destroy()
 		getdns_context_destroy(context);
 	if(extensions != NULL)
 		getdns_dict_destroy(extensions);
-}
-
-extern enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
-        char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp, char **canonp);
-  
+}  
   
 enum nss_status _nss_getdns_gethostbyaddr2_r (const void *addr, socklen_t len, int af,
         struct hostent *result, char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp)
 {
+    getdns_return_t return_code;
     enum nss_status status;
     struct addr_param result_ptr = {.addr_type=REV_HOSTENT, .addr_entry={.p_hostent=result}};
-    status = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, errnop, h_errnop, ttlp, NULL);
+    return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, ttlp, NULL);
+    getdns_process_statcode(return_code, &status, errnop, h_errnop);
     debug_log("GETDNS: gethostbyaddr2: STATUS: %d\n", status);
     return status;
 }
@@ -77,26 +86,15 @@ enum nss_status _nss_getdns_gethostbyaddr_r (const void *addr, socklen_t len, in
     return _nss_getdns_gethostbyaddr2_r (addr, len, af, result, buffer, buflen, errnop, h_errnop, NULL);
 }
 
-/*getaddrinfo, bsd-like version*/
-enum nss_status _nss_getdns_getaddrinfo (const char *name, int af, struct addrinfo **result, struct addrinfo *hints, int *errnop, int *h_errnop)
-{
-	
-    enum nss_status status;
-    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=hints};
-    char bufplholder[4];
-    status = getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, errnop, h_errnop, NULL, NULL);
-    debug_log("GETDNS: getaddrinfo <%s>: STATUS: %d\n", name, status);
-    return status;
-}
-
 /*gethostbyname4_r sends out parallel A and AAAA queries*/
 enum nss_status _nss_getdns_gethostbyname4_r (const char *name, struct gaih_addrtuple **pat, 
         char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp)
 {
-	
+    getdns_return_t return_code;
     enum nss_status status;
     struct addr_param result_ptr = {.addr_type=ADDR_GAIH, .addr_entry={.p_gaih=pat}};
-    status = getdns_gethostinfo(name, AF_UNSPEC, &result_ptr, buffer, buflen, errnop, h_errnop, ttlp, NULL);
+    return_code = getdns_gethostinfo(name, AF_UNSPEC, &result_ptr, buffer, buflen, ttlp, NULL);
+    getdns_process_statcode(return_code, &status, errnop, h_errnop);
     debug_log("GETDNS: gethostbyname4 <%s>: STATUS: %d\n", name, status);
     return status;
 }
@@ -104,9 +102,11 @@ enum nss_status _nss_getdns_gethostbyname4_r (const char *name, struct gaih_addr
 enum nss_status _nss_getdns_gethostbyname3_r (const char *name, int af, struct hostent *result, 
         char *buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp, char **canonp)
 {
+    getdns_return_t return_code;
     enum nss_status status;
     struct addr_param result_ptr = {.addr_type=ADDR_HOSTENT, .addr_entry={.p_hostent=result}};
-    status = getdns_gethostinfo(name, af, &result_ptr, buffer, buflen, errnop, h_errnop, ttlp, canonp);
+    return_code = getdns_gethostinfo(name, af, &result_ptr, buffer, buflen, ttlp, canonp);
+    getdns_process_statcode(return_code, &status, errnop, h_errnop);
     debug_log("GETDNS: gethostbyname3 <%s>: STATUS: %d\n", name, status);
     return status;
 }
@@ -124,31 +124,10 @@ enum nss_status _nss_getdns_gethostbyname_r (const char *name, struct hostent *r
 	debug_log("GETDNS: gethostbyname!\n");
     enum nss_status status = NSS_STATUS_NOTFOUND;
     if (_res.options & RES_USE_INET6)
-        status = _nss_getdns_gethostbyname3_r (name, AF_INET6, result, buffer,
-					buflen, errnop, h_errnop, NULL, NULL);
+        status = _nss_getdns_gethostbyname3_r (name, AF_INET6, result, buffer, 
+        			buflen, errnop, h_errnop, NULL, NULL);
     if (status == NSS_STATUS_NOTFOUND)
         status = _nss_getdns_gethostbyname3_r (name, AF_INET, result, buffer,
 					buflen, errnop, h_errnop, NULL, NULL);
     return status;
 }
-
-/*
-enum nss_status _nss_getdns_getservbyname_r (const char *name, const char *protocol,
-			  struct servent *serv, char *buffer, size_t buflen, int *errnop)
-{
-	enum nss_status status;
-    struct addr_param result_ptr = {.addr_type=ADDR_SERVENT, .addr_entry={.p_servent=serv}};
-    int mock_h_errno;
-    int mock_ttl;
-    status = getdns_gethostinfo(name, AF_UNSPEC, &result_ptr, buffer, buflen, errnop, &mock_h_errno, &mock_ttl, NULL);
-    debug_log("GETDNS: getservbyname!\n");
-    return status;
-}
-
-enum nss_status _nss_getdns_getservbyport_r (int port, const char *protocol, struct servent *serv, 
-		char *buffer, size_t buflen, int *errnop, int *h_errnop)
-{
-	debug_log("GETDNS: getservbyport!\n");
-	*errnop = ENOENT;
-    return NSS_STATUS_NOTFOUND;
-}*/

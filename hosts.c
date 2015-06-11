@@ -61,7 +61,7 @@ static getdns_return_t extract_cname(char *cname_label, getdns_dict *response_tr
 static getdns_return_t extract_hostent(struct hostent *result, getdns_list *replies_tree, int af, 
 		uint32_t rr_type_filter, char *intern_buffer, size_t *buflen)
 {
-	getdns_return_t return_code = GETDNS_RETURN_GOOD;
+	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
 	size_t reply_idx, num_replies, addr_idx = 0;
 	return_code = getdns_list_get_length(replies_tree, &num_replies);
 	if(num_replies < 1){
@@ -72,6 +72,7 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
 	result->h_length = (af == AF_INET6 ? INET6_ADDRSTRLEN : INET_ADDRSTRLEN);  
 	result->h_addr_list = (char**)intern_buffer; 
 	getdns_dict *ref_reply;
+	ref_reply = NULL;
 	size_t tot_answers = 0;
 	for(reply_idx = 0; reply_idx < num_replies; ++reply_idx)
 	{
@@ -121,7 +122,10 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
         	}
         }
 	}
-	return_code = extract_cname(rr_type_filter == GETDNS_RRTYPE_PTR ? "ptrdname" : "canonical_name", ref_reply, intern_buffer, buflen, &(result->h_name));
+	if(addr_idx > 0)
+	{
+		return_code = extract_cname(rr_type_filter == GETDNS_RRTYPE_PTR ? "ptrdname" : "canonical_name", ref_reply, intern_buffer, buflen, &(result->h_name));
+	}
 	result->h_addr_list[addr_idx] = NULL;
 	return return_code;
 }
@@ -299,21 +303,15 @@ Check for intern_buffer size and address family
 #define DO_CHECK_PARAMS()	\
 do{	\
     if(!name || !buflen || (!result_ptr)){	\
-        getdns_process_statcode(GETDNS_RETURN_MEMORY_ERROR, &status, errnop, h_errnop);	\
         err_log("GETDNS: Memory error...");	\
-        return status;	\
+        return GETDNS_RETURN_MEMORY_ERROR;	\
     }	\
     if( (af != AF_INET) && (af != AF_INET6) && (af != AF_UNSPEC) ){	\
-        getdns_process_statcode(GETDNS_RETURN_WRONG_TYPE_REQUESTED, &status, errnop, h_errnop);	\
         err_log("GETDNS: Wrong type requested...");	\
-        return status;	\
+        return GETDNS_RETURN_WRONG_TYPE_REQUESTED;	\
     }	\
 } while (0)
 
-/*
-Convert getdns status codes & return values to NSS status codes, and set errno values
-*/
-extern void getdns_process_statcode(uint32_t status, enum nss_status *nss_code, int *errnop, int *h_errnop);
 
 /*
 Retrieve system global getdns context and default extensions
@@ -366,7 +364,7 @@ static getdns_return_t parse_response(const char *query, getdns_context *context
     if(resp_status != GETDNS_RESPSTATUS_GOOD){
         /*The search returned a negative answer*/
         return_code = resp_status;
-        err_log("The search returned no results: error code < %d >\n", resp_status);
+        err_log("GETDNS: The search returned no results: error code < %d >\n", resp_status);
         return return_code;
     }
     return_code = getdns_dict_get_list(*response, node_selector, replies_list);
@@ -379,9 +377,8 @@ It combines both getaddrinfo() and getnameinfo(), so in short, everything the mo
 This was decided for simplicity purposes since this is just a wrapper around getdns which does all the work.
 */
 enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
-        char *intern_buffer, size_t buflen, int *errnop, int *h_errnop, int32_t *ttlp, char **canonp)
+        char *intern_buffer, size_t buflen, int32_t *ttlp, char **canonp)
 {
-    enum nss_status status = NSS_STATUS_NOTFOUND;
     getdns_context *context = NULL;
     getdns_dict *extensions = NULL;
     getdns_dict *replies_tree = NULL;
@@ -404,7 +401,7 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
     char *node_selector = result_ptr->addr_type == ADDR_GAIH ? "just_address_answers" : "replies_tree" ; 
     return_code = parse_response(name, context, extensions, &replies_tree, &addr_list, af, result_ptr->addr_type, node_selector);
     if(return_code != GETDNS_RETURN_GOOD){
-        err_log("Failed parsing response: ERROR < %d >\n", return_code);
+        err_log("GETDNS <%s>: Failed parsing response: ERROR < %d >\n", name, return_code);
         goto end;
     }
     uint32_t rr_type_filter = result_ptr->addr_type == REV_HOSTENT ? GETDNS_RRTYPE_PTR : (af == AF_INET ? GETDNS_RRTYPE_A : GETDNS_RRTYPE_A6) ; 
@@ -428,9 +425,7 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
     	1. All the error/status codes must follow POSIX specifications for NSS or match the latest libc?
     	2. All the getdns data structures need to be cleaned up, or does destroying the top-level node suffice? 
     	*/
-    	getdns_process_statcode(return_code, &status, errnop, h_errnop);
-    	err_log("GETDNS: Returning GETDNS_CODE: %d , NSS_STATUS: %d, errnop: %d, h_errnop: %d\n", return_code, status, *errnop, *h_errnop);
-        if(canonp && status == NSS_STATUS_SUCCESS)
+        if(canonp && return_code == GETDNS_RETURN_GOOD)
         {
             *canonp = result_ptr->addr_entry.p_hostent->h_name;
         }
@@ -438,5 +433,37 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
         {
         	getdns_dict_destroy(replies_tree);
         }
-        return status;
+        return return_code;
+}
+
+
+getdns_return_t getdns_getnameinfo (const void *addr, const int af, char *nodename, size_t namelen)
+{
+    getdns_return_t return_code;
+    struct hostent result;
+    size_t buflen = 1024;
+    do{
+    	char buffer[buflen];
+		struct addr_param result_ptr = {.addr_type=REV_HOSTENT, .addr_entry={.p_hostent=&result}};
+		return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, NULL, NULL);
+    	buflen *= 2;
+    }while(return_code == GETDNS_RETURN_MEMORY_ERROR);
+    if(return_code == GETDNS_RETURN_GOOD)
+    {
+    	if(strlen(result.h_name) > namelen || nodename == NULL)
+    	{
+    		return GETDNS_RETURN_MEMORY_ERROR;
+    	}else{
+    		strcpy(nodename, result.h_name);
+    	}
+    }
+    return return_code;
+}
+
+
+getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *hints)
+{
+    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=hints};
+    char bufplholder[4];
+    return getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, NULL, NULL);
 }

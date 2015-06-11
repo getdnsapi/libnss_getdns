@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include "addr_utils.h"
 
-/*Convert v4 to a V6 (v4-mapped address).*/
+/*Convert IPv4 to a IPv6 (IPv4-mapped address).*/
 void v42v6_map(char *addr)
 {
 	struct in6_addr *a6 = (struct in6_addr*)addr;
@@ -14,7 +14,6 @@ void v42v6_map(char *addr)
 	memset(a6->s6_addr+10, 0xff, 2);
 	memset(a6->s6_addr, 0, 10);
 }
-
 
 void *addr_data_ptr(struct sockaddr_storage *arg)
 {
