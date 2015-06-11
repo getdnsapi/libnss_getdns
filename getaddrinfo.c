@@ -292,8 +292,7 @@ int __getdns_getaddrinfo(const char *hostname, const char *servname, const struc
 }
 
 
-int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
-	struct addrinfo **res)
+int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,	struct addrinfo **res)
 {
 	enum nss_status status = NSS_STATUS_NOTFOUND;
 	return __getdns_getaddrinfo(hostname, servname, hints, res, &status);
