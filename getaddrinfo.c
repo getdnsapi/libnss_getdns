@@ -22,15 +22,21 @@ Supported ERRORS:
 #include <arpa/inet.h>
 #include <errno.h>
 #include <nss.h>
+#include <stdlib.h>
+#include <getdns/getdns.h>
 #include "logger.h"
 #include "addr_utils.h"
 
 #define  UNUSED_PARAM(x) ((void)(x))	
 
 void getdns_mirror_freeaddrinfo(struct addrinfo*);
+extern void __freeaddrinfo(struct addrinfo*);
 extern void v42v6_map(char*);
-extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*, int*, int*);
+extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*);
+extern enum nss_status eai2nss_code(int, int*);
 extern void *addr_data_ptr(struct sockaddr_storage*);
+extern void getdns_process_statcode(uint32_t, enum nss_status*, int*, int*);
+extern getdns_return_t getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*);
 
 int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int *hint_err)
 {
@@ -108,20 +114,14 @@ int service_lookup(const char *servname, const char *protocol, int *port, struct
 	return *err == 0 ? 0 : -1;
 }
 
-int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
-	struct addrinfo **res)
-{
-	enum nss_status status = NSS_STATUS_NOTFOUND;
-	return getdns_getaddrinfo(hostname, servname, hints, res, &status);
-}
-
-int getdns_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
+int __getdns_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
 	struct addrinfo **res, enum nss_status *status)
 {
 	struct servent *service_ptr;
 	const char *proto;
 	int family, socktype, flags, protocol;
 	struct addrinfo *temp_ai;
+	getdns_return_t return_code;
 	int err = 0;
 	int port = 0;
 	temp_ai = NULL;
@@ -187,8 +187,7 @@ int getdns_getaddrinfo(const char *hostname, const char *servname, const struct 
 	if (family == 0 || (flags & AI_NUMERICHOST) != 0)
 	{
 		char addrbuf[sizeof(struct in6_addr)];
-		int parsedv4, parsedv6,
-		addrsize, addroff;
+		int parsedv4, parsedv6, addrsize;
 		if(( family != 0 && hostname != NULL) 
 			&& ( (0 == (parsedv4 = inet_pton(AF_INET, hostname, addrbuf)))
 			&& (0 == (parsedv6 = inet_pton(AF_INET, hostname, addrbuf)))))
@@ -271,14 +270,15 @@ int getdns_getaddrinfo(const char *hostname, const char *servname, const struct 
 	struct addrinfo query_hints = {.ai_family = family, .ai_socktype = socktype, .ai_protocol = protocol, .ai_flags = flags};
 	__freeaddrinfo(temp_ai);
 	temp_ai = NULL;
-	*status = _nss_getdns_getaddrinfo(hostname, family, &temp_ai, &query_hints, &err, &h_errnop);
-	if( (*status == NSS_STATUS_NOTFOUND) &&  ((hints->ai_flags & AI_V4MAPPED) != 0 && family == AF_INET6) )
+	return_code = getdns_getaddrinfo(hostname, family, &temp_ai, &query_hints);
+	if( (return_code == GETDNS_RESPSTATUS_NO_NAME) &&  ((hints->ai_flags & AI_V4MAPPED) != 0 && family == AF_INET6) )
 	{
 		query_hints.ai_flags |= AI_V4MAPPED;
-		*status = _nss_getdns_getaddrinfo(hostname, AF_INET, &temp_ai, &query_hints, &err, &h_errnop);
+		return_code = getdns_getaddrinfo(hostname, AF_INET, &temp_ai, &query_hints);
 	}
+	getdns_process_statcode(return_code, status, &errno, &h_errnop);
 	end:
-		if (temp_ai == NULL || *status != NSS_STATUS_SUCCESS)
+		if (temp_ai == NULL || return_code != GETDNS_RETURN_GOOD)
 		{
 			if (err == 0)
 			{
@@ -289,6 +289,14 @@ int getdns_getaddrinfo(const char *hostname, const char *servname, const struct 
 		}
 		*res = temp_ai;	
 		return eai2nss_code(0, status);
+}
+
+
+int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
+	struct addrinfo **res)
+{
+	enum nss_status status = NSS_STATUS_NOTFOUND;
+	return __getdns_getaddrinfo(hostname, servname, hints, res, &status);
 }
 
 void getdns_mirror_freeaddrinfo(struct addrinfo *ai)
