@@ -1,9 +1,9 @@
-CC = cc
-MODULE_NAME = libnss_getdns.so.2
-INSTALL_PATH = /opt/lib
-LIBS_PATH = /usr/lib
+MODULE_NAME=libnss_getdns.so.2
+CC = gcc
+INSTALL_PATH = ${exec_prefix}/lib
+LIBS_PATH = ${exec_prefix}/lib
 LIBNAME = getdns-1.15.so
-LIB_PATH = $(INSTALL_PATH)/$(LIBNAME)
+LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
 CFLAGS = -I/usr/local/include -gdwarf-2 -O0 -fPIC -Wall
