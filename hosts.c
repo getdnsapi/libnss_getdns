@@ -258,7 +258,6 @@ Adapted from what gethostbyname4_r() does, it was extracted to make the getdns_g
 both structs used in gethostbyname3_r() [hostent] and gethostbyname4_r() [gaih_addrtuple].
 TODO: is it ugly enough?
 */
-
 #define EXTRACT_ADDRTUPLE() \
 do {\
 	memset(result_addrtuple, 0, sizeof(struct gaih_addrtuple*));  \
