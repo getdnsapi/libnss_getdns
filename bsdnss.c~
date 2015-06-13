@@ -233,7 +233,6 @@ int __bsdnss_freeaddrinfo(void *rval, void *cb_data, va_list ap)
   sa = va_arg(ap, struct sockaddr*);
   api_funct = cb_data;
   api_funct(sa);
-  return 0;
 }
 
 void nss_module_unregister(ns_mtab *mtab, u_int nelems)

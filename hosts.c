@@ -19,6 +19,7 @@ extern void *addr_data_ptr(struct sockaddr_storage*);
 
 #define  UNUSED_PARAM(x) ((void)(x))
 
+void dd(){}
 /*static getdns_return_t extract_cname(getdns_dict *response_tree, char *intern_buffer, size_t *buflen, char **ret)
 {
 	getdns_bindata *c_name = NULL;
@@ -44,7 +45,7 @@ static getdns_return_t extract_cname(char *cname_label, getdns_dict *response_tr
         err_log("GETDNS: Failed converting CNAME (%s)...\n", cname_label);
         return return_code;
     }
-    int cname_len = strlen(cname_str);
+    size_t cname_len = strlen(cname_str);
     if(*buflen > cname_len)
     {
     	memcpy(intern_buffer, cname_str, cname_len-1);
@@ -59,13 +60,14 @@ static getdns_return_t extract_cname(char *cname_label, getdns_dict *response_tr
 }
 
 static getdns_return_t extract_hostent(struct hostent *result, getdns_list *replies_tree, int af, 
-		uint32_t rr_type_filter, char *intern_buffer, size_t *buflen)
+		uint32_t rr_type_filter, char *intern_buffer, size_t *buflen, uint32_t *respstatus)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
+	*respstatus = GETDNS_RESPSTATUS_NO_NAME;
 	size_t reply_idx, num_replies, addr_idx = 0;
 	return_code = getdns_list_get_length(replies_tree, &num_replies);
 	if(num_replies < 1){
-        return GETDNS_RESPSTATUS_NO_NAME;
+        return GETDNS_RETURN_GENERIC_ERROR;
     }
 	memset(result, 0, sizeof(struct hostent)); 
 	result->h_addrtype = af;
@@ -108,7 +110,7 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
         		return_code = getdns_dict_get_dict(rr, "rdata", &rdata); 
         		return_code = getdns_dict_get_bindata(rdata, "rdata_raw", &rdata_raw);
         		char *tmp_name = (char*)(rdata_raw->data);  
-        		int len = strlen(tmp_name);
+        		size_t len = rdata_raw->size;
         		if(*buflen < len)
         		{
         			err_log("GETDNS: buffer too small.\n");
@@ -125,42 +127,35 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
 	if(addr_idx > 0)
 	{
 		return_code = extract_cname(rr_type_filter == GETDNS_RRTYPE_PTR ? "ptrdname" : "canonical_name", ref_reply, intern_buffer, buflen, &(result->h_name));
+		*respstatus = GETDNS_RESPSTATUS_GOOD;
 	}
 	result->h_addr_list[addr_idx] = NULL;
 	return return_code;
 }
 
-static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinfo *hints, getdns_list *replies_tree, uint32_t rr_type_filter)
+static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinfo *hints, 
+		getdns_list *replies_tree, uint32_t rr_type_filter, uint32_t *respstatus)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
 	size_t reply_idx, num_replies;
 	struct addrinfo *ai, *result_ptr;
 	int addrsize, family;
+	int hints_map_all = 0;
 	return_code = getdns_list_get_length(replies_tree, &num_replies);
 	if(num_replies < 1){
-        return GETDNS_RESPSTATUS_NO_NAME;
+        return GETDNS_RETURN_GENERIC_ERROR;
     }
 	addrsize = (hints->ai_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));  
-	size_t tot_answers = 0, num_matching_responses = 0;
-	for(reply_idx = 0; reply_idx < num_replies; ++reply_idx)
-	{
-		getdns_dict *tmp_reply;
-		return_code = getdns_list_get_dict(replies_tree, reply_idx, &tmp_reply);
-		getdns_list* answers;
-		return_code = getdns_dict_get_list(tmp_reply, "answer", &answers);
-		size_t num_answers;
-        getdns_list_get_length(answers, &num_answers);
-        tot_answers += num_answers;
-	}
+	size_t num_matching_responses = 0;
 	ai = NULL, result_ptr = NULL;
 	getdns_dict *parent = NULL;
 	family = hints->ai_family;
 	if((hints->ai_family == AF_INET6) && (hints->ai_flags & AI_V4MAPPED))
 	{
-		#define HINTS_V4MAP
-		if(hints->ai_flags & AI_ALL)
+		//if(hints->ai_flags & AI_ALL)
 		{
-			#define HINTS_V4MAP_ALL
+			/*AI_ALL and AI_V4MAPPED are treated equally here since AI_V4MAPPED is meaningful only when no IPv6 were found.*/
+			hints_map_all = 1;
 		}
 	}else{
 		hints->ai_flags &= ~AI_V4MAPPED;
@@ -188,14 +183,9 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
         	*(2)we have AI_V4MAPPED and AI_ALL set with AF_INET6
         	*AI_V4MAPPED and AF_INET6 should both be set if the first attempt to retrieve IPv6 addresses returned empty.
         	*/
-        	#ifndef HINTS_V4MAP_ALL
-        	/*AI_ALL and AI_V4MAPPED are treated equally here since AI_V4MAPPED is meaningful only when no IPv6 were found.*/
-        	if (rr_type == rr_type_filter)
+        	UNUSED_PARAM(rr_type_filter);
+        	if ( (rr_type == rr_type_filter) || (hints_map_all && (rr_type == GETDNS_RRTYPE_A || rr_type == GETDNS_RRTYPE_AAAA)) )
         	{
-        	#else
-        	if (rr_type == GETDNS_RRTYPE_A || rr_type == GETDNS_RRTYPE_A6)
-        	{
-        	#endif /*HINTS_V4MAP_ALL*/
         		getdns_dict *rdata;
         		getdns_bindata *rdata_raw;
         		return_code = getdns_dict_get_dict(rr, "rdata", &rdata); 
@@ -209,7 +199,7 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
         			family = AF_INET6;
         			addrsize = sizeof(struct sockaddr_in6);
         		}else{
-        			addrsize = (rr_type == GETDNS_RRTYPE_A6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+        			addrsize = (rr_type == GETDNS_RRTYPE_AAAA) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
         			addr_data = alloca(addrsize);
         			memcpy(addr_data, rdata_raw->data, rdata_raw->size);
         		}
@@ -248,7 +238,8 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
         	}
         }
 	}
-	return num_matching_responses > 0 ? return_code : GETDNS_RESPSTATUS_NO_NAME;
+	*respstatus = num_matching_responses > 0 ? GETDNS_RESPSTATUS_GOOD : GETDNS_RESPSTATUS_NO_NAME;
+	return num_matching_responses > 0 ? return_code : GETDNS_RETURN_GENERIC_ERROR;
 }
 
 /*
@@ -323,12 +314,12 @@ TODO:
 	*MAJOR: should the lookups be asynchronous????
 	*MINOR: this function has so many parameters!
 */
-static getdns_return_t parse_response(const char *query, getdns_context *context, getdns_dict *extensions, 
-		getdns_dict **response, getdns_list **replies_list, const int af, const addr_param_t param_type, const char *node_selector)
+static int parse_response(const char *query, getdns_context *context, getdns_dict *extensions, 
+		getdns_dict **response, getdns_list **replies_list, const int af, 
+		const addr_param_t param_type, const char *node_selector, uint32_t *resp_status)
 {
-	getdns_return_t return_code = GETDNS_RETURN_GOOD;
+	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
 	uint16_t request_type;
-    uint32_t resp_status = -1;
 	/*
     Perform lookup synchronously
     */
@@ -340,7 +331,7 @@ static getdns_return_t parse_response(const char *query, getdns_context *context
         return_code &= getdns_hostname_sync(context, address, extensions, response);
         getdns_dict_destroy(address);
     }else if( af == AF_INET || af == AF_INET6 ){
-        request_type = (af == AF_INET6 ? GETDNS_RRTYPE_A6 : (af == AF_INET ? GETDNS_RRTYPE_A : GETDNS_RRTYPE_A6));
+        request_type = af == AF_INET ? GETDNS_RRTYPE_A : GETDNS_RRTYPE_AAAA;
         return_code = getdns_general_sync(context, query, request_type, extensions, response);
     }else{
         return_code = getdns_address_sync(context, query, extensions, response);
@@ -349,21 +340,21 @@ static getdns_return_t parse_response(const char *query, getdns_context *context
         if(*response == NULL){
         	err_log("GETDNS: no answers found.");
         }
-        err_log("GETDNS: failed with status code: < %d, %d >", return_code, resp_status);
+        err_log("GETDNS: failed with status code: < %d, %d >", return_code, *resp_status);
        	return return_code;
     }
     /*
     Process result and extract one of the top-level nodes for further parsing
     */
-    return_code = getdns_dict_get_int(*response, "status", &resp_status);
+    return_code = getdns_dict_get_int(*response, "status", resp_status);
     if(return_code != GETDNS_RETURN_GOOD){
         err_log("getdns_dict_get_int failed with error code < %d >\n", return_code);
         return return_code;
     }
-    if(resp_status != GETDNS_RESPSTATUS_GOOD){
+    if(*resp_status != GETDNS_RESPSTATUS_GOOD){
         /*The search returned a negative answer*/
-        return_code = resp_status;
-        err_log("GETDNS: The search returned no results: error code < %d >\n", resp_status);
+        return_code = GETDNS_RETURN_GENERIC_ERROR;
+        err_log("GETDNS: The search returned no results: error code < %d >\n", *resp_status);
         return return_code;
     }
     return_code = getdns_dict_get_list(*response, node_selector, replies_list);
@@ -375,8 +366,8 @@ This is the magic function:
 It combines both getaddrinfo() and getnameinfo(), so in short, everything the module does!
 This was decided for simplicity purposes since this is just a wrapper around getdns which does all the work.
 */
-enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
-        char *intern_buffer, size_t buflen, int32_t *ttlp, char **canonp)
+getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
+        char *intern_buffer, size_t buflen, int32_t *ttlp, char **canonp, uint32_t *respstatus)
 {
     getdns_context *context = NULL;
     getdns_dict *extensions = NULL;
@@ -385,6 +376,8 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
     getdns_return_t return_code; 
     memset(intern_buffer, 0, buflen);
     DO_CHECK_PARAMS();
+    UNUSED_PARAM(ttlp);
+    *respstatus = GETDNS_RESPSTATUS_NO_NAME;
     /*
     Load system global getdns context and default extensions
     */
@@ -398,33 +391,32 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
     All the others end up calling gethostbyaddr3_r or gethostbyname2_r, which have a comparable signature.
     */
     char *node_selector = result_ptr->addr_type == ADDR_GAIH ? "just_address_answers" : "replies_tree" ; 
-    return_code = parse_response(name, context, extensions, &replies_tree, &addr_list, af, result_ptr->addr_type, node_selector);
+    return_code = parse_response(name, context, extensions, &replies_tree, &addr_list, af, result_ptr->addr_type, node_selector, respstatus);
     if(return_code != GETDNS_RETURN_GOOD){
         err_log("GETDNS <%s>: Failed parsing response: ERROR < %d >\n", name, return_code);
         goto end;
     }
-    uint32_t rr_type_filter = result_ptr->addr_type == REV_HOSTENT ? GETDNS_RRTYPE_PTR : (af == AF_INET ? GETDNS_RRTYPE_A : GETDNS_RRTYPE_A6) ; 
+    uint32_t rr_type_filter = result_ptr->addr_type == REV_HOSTENT ? GETDNS_RRTYPE_PTR : (af == AF_INET ? GETDNS_RRTYPE_A : GETDNS_RRTYPE_AAAA) ; 
     if(result_ptr->addr_type == ADDR_GAIH)
     {
     	struct gaih_addrtuple **result_addrtuple = result_ptr->addr_entry.p_gaih;
     	/**
     	TODO: The EXTRACT_ADDRTUPLE macro is ugly...
     	*/
-        EXTRACT_ADDRTUPLE();
+       EXTRACT_ADDRTUPLE();
     }else if(result_ptr->addr_type == ADDR_ADDRINFO){
-    	return_code =  extract_addrinfo(result_ptr->addr_entry.p_addrinfo, result_ptr->hints, addr_list, rr_type_filter);
+    	return_code =  extract_addrinfo(result_ptr->addr_entry.p_addrinfo, result_ptr->hints, addr_list, rr_type_filter, respstatus);
     }    
     else{
-        return_code = extract_hostent(result_ptr->addr_entry.p_hostent, addr_list, af, rr_type_filter, intern_buffer, &buflen);
+        return_code = extract_hostent(result_ptr->addr_entry.p_hostent, addr_list, af, rr_type_filter, intern_buffer, &buflen, respstatus);
     }   
     end:
     	/*
     	This section is not complete:
     	TODO:
-    	1. All the error/status codes must follow POSIX specifications for NSS or match the latest libc?
-    	2. All the getdns data structures need to be cleaned up, or does destroying the top-level node suffice? 
+    	1. All the getdns data structures need to be cleaned up, or does destroying the top-level node suffice? 
     	*/
-        if(canonp && return_code == GETDNS_RETURN_GOOD)
+        if(canonp && *respstatus == GETDNS_RESPSTATUS_GOOD)
         {
             *canonp = result_ptr->addr_entry.p_hostent->h_name;
         }
@@ -439,12 +431,13 @@ enum nss_status getdns_gethostinfo(const char *name, int af, struct addr_param *
 getdns_return_t getdns_getnameinfo (const void *addr, const int af, char *nodename, size_t namelen)
 {
     getdns_return_t return_code;
+    uint32_t respstatus;
     struct hostent result;
     size_t buflen = 1024;
     do{
     	char buffer[buflen];
 		struct addr_param result_ptr = {.addr_type=REV_HOSTENT, .addr_entry={.p_hostent=&result}};
-		return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, NULL, NULL);
+		return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, NULL, NULL, &respstatus);
     	buflen *= 2;
     }while(return_code == GETDNS_RETURN_MEMORY_ERROR);
     if(return_code == GETDNS_RETURN_GOOD)
@@ -460,9 +453,9 @@ getdns_return_t getdns_getnameinfo (const void *addr, const int af, char *nodena
 }
 
 
-getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *hints)
+getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *hints, uint32_t *respstatus)
 {
     struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=hints};
     char bufplholder[4];
-    return getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, NULL, NULL);
+    return getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, NULL, NULL, respstatus);
 }

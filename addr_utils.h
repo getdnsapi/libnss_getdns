@@ -1,6 +1,12 @@
+#if defined(__FreeBSD__)
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#endif
 #ifndef _NSS_GETDNS_ADDR_UTILS_H_
 #define _NSS_GETDNS_ADDR_UTILS_H_
-
+#if defined(__FreeBSD__)
+#undef AI_MASK
+#endif
 #define AI_MASK (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_NUMERICSERV | AI_V4MAPPED | AI_ALL | AI_ADDRCONFIG)
 #ifdef NI_NUMERICSCOPE
 	#define NI_MASK (NI_DGRAM | NI_NUMERICSCOPE | NI_NUMERICSERV | NI_NAMEREQD | | NI_NUMERICHOST | NI_NOFQDN)
