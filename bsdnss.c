@@ -1,15 +1,16 @@
+#if defined(__FreeBSD__)
 #include <stdarg.h>
 #include <errno.h>
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <nsswitch.h>
 #include <nss.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include "nss_getdns.h"
 #include "logger.h"
 
-#if defined(__FreeBSD__)
 #define  UNUSED_PARAM(x) ((void)(x))
 
 #define BUFFER_SIZE 1024
@@ -117,10 +118,6 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   name = va_arg(ap, const char*);
   namelen = va_arg(ap, int);
   af = va_arg(ap, int);
-  //ret = va_arg(ap, struct hostent **);
-  //buffer = va_arg(ap, char*);
-  //buflen = va_arg(ap, size_t);
-  //errnop = va_arg(ap, int*);
   api_funct = cb_data;
   buflen = 1024;
   buffer = malloc(buflen);
