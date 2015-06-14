@@ -14,6 +14,13 @@
 
 #define BUFFER_SIZE 1024
 
+struct getnamaddr {
+         struct hostent *hp;
+         char *buf;
+         size_t buflen;
+         int *he;
+};
+     
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyname);
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyname2);
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyaddr);
@@ -51,6 +58,20 @@ static ns_mtab methods[]={
   { NSDB_HOSTS, "freeaddrinfo", &__bsdnss_freeaddrinfo, &getdns_mirror_freeaddrinfo}
 };
 
+static struct getnamaddr *allocgetnamaddr(struct hostent *val, cha *buf, size_t buflen, int *he)
+{
+	struct getnamaddr *ret = malloc(sizeof(struct getnamaddr));
+	if(!ret)
+	{
+		err_log("[allocgetnamaddr]: memory error.");
+		return NULL;
+	}	
+	ret->hp = val;
+	ret->buf = buf;
+	ret->buflen = buflen;
+	ret->he = he;
+	return ret;
+}
 /*
 The functions below are implemented following a documentation for the nsdispatch() function in NetBSD 6.1.5 man-pages.
 The functions are noted to not follow the standard calling convention for the standard nsdispatch API until changed in "the future",
@@ -90,23 +111,31 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   char *buffer;
   size_t buflen;
   struct hostent *ret;
-  int af, *errnop;
+  int af, *errnop, namelen;
   enum nss_status status;
   enum nss_status (*api_funct)(const char *, int, struct hostent *, char *, size_t, int *, int *);
   name = va_arg(ap, const char*);
+  namelen = va_arg(ap, int);
   af = va_arg(ap, int);
-  ret = va_arg(ap, struct hostent *);
-  buffer = va_arg(ap, char*);
-  buflen = va_arg(ap, size_t);
-  errnop = va_arg(ap, int*);
+  //ret = va_arg(ap, struct hostent **);
+  //buffer = va_arg(ap, char*);
+  //buflen = va_arg(ap, size_t);
+  //errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct(name, af, ret, buffer, buflen, errnop, &h_errno);
+  buflen = 1024;
+  buffer = malloc(buflen);
+  ret = malloc(sizeof(struct hostent));
+  if(!ret || !buffer)
+  {
+  	return __nss_compat_result(NSS_TRYAGAIN, &errno);
+  }
+  status = api_funct(name, af, ret, buffer, buflen, &errno, &h_errno);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
-    *((struct hostent **)rval) = ret;
+    *((struct getnamaddr**)rval) = allcgetnamaddr(ret, buffer, buflen, h_errno);
   }else{
-  	*((struct hostent **)rval) = NULL;
+  	*((struct getnamaddr**)rval) = NULL;
   }
   err_log("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
   return status;
