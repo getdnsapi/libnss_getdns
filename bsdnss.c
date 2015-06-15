@@ -53,25 +53,13 @@ static ns_mtab methods[]={
   { NSDB_HOSTS, "gethostbyname2_r", &__bsdnss_gethostbyname2, &_nss_getdns_gethostbyname2_r },
   { NSDB_HOSTS, "gethostbyaddr_r", &__bsdnss_gethostbyaddr, &_nss_getdns_gethostbyaddr_r },
   { NSDB_HOSTS, "gethostbyaddr2_r", &__bsdnss_gethostbyaddr2, &_nss_getdns_gethostbyaddr2_r },
-  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_mirror_getaddrinfo },
-  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, &getdns_mirror_getnameinfo },
+  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, 
+&getdns_mirror_getaddrinfo },
+  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, 
+&getdns_mirror_getnameinfo },
   { NSDB_HOSTS, "freeaddrinfo", &__bsdnss_freeaddrinfo, &getdns_mirror_freeaddrinfo}
 };
 
-static struct getnamaddr *allocgetnamaddr(struct hostent *val, cha *buf, size_t buflen, int *he)
-{
-	struct getnamaddr *ret = malloc(sizeof(struct getnamaddr));
-	if(!ret)
-	{
-		err_log("[allocgetnamaddr]: memory error.");
-		return NULL;
-	}	
-	ret->hp = val;
-	ret->buf = buf;
-	ret->buflen = buflen;
-	ret->he = he;
-	return ret;
-}
 /*
 The functions below are implemented following a documentation for the nsdispatch() function in NetBSD 6.1.5 man-pages.
 The functions are noted to not follow the standard calling convention for the standard nsdispatch API until changed in "the future",
@@ -111,27 +99,23 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   char *buffer;
   size_t buflen;
   struct hostent *ret;
-  int af, *errnop, namelen;
+  int af, *errnop;
   enum nss_status status;
   enum nss_status (*api_funct)(const char *, int, struct hostent *, char *, size_t, int *, int *);
   name = va_arg(ap, const char*);
-  namelen = va_arg(ap, int);
   af = va_arg(ap, int);
+  ret = va_arg(ap, struct hostent*);
+  buffer = va_arg(ap, char*);
+  buflen = va_arg(ap, size_t);
+  errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  buflen = 1024;
-  buffer = malloc(buflen);
-  ret = malloc(sizeof(struct hostent));
-  if(!ret || !buffer)
-  {
-  	return __nss_compat_result(NSS_TRYAGAIN, &errno);
-  }
-  status = api_funct(name, af, ret, buffer, buflen, &errno, &h_errno);
+  status = api_funct(name, af, ret, buffer, buflen, &errno, errnop);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
-    *((struct getnamaddr**)rval) = allocgetnamaddr(ret, buffer, buflen, h_errno);
+    *((struct hostent**)rval) = ret;
   }else{
-  	*((struct getnamaddr**)rval) = NULL;
+  	*((struct hostent**)rval) = NULL;
   }
   err_log("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
   return status;
@@ -225,13 +209,15 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
 
 int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
 {
+  err_log("BSDNSS: getnameinfo()");
   const struct sockaddr *sa;
   socklen_t salen;
   char *host, *serv;
   size_t hostlen, servlen;
-  int flags, ret;
+  int flags, ret, *retval;
   enum nss_status status;
   enum nss_status (*api_funct)(const struct sockaddr*, socklen_t, char*, size_t, char*, size_t, int);
+  retval = va_arg(ap, int*);
   sa = va_arg(ap, const struct sockaddr*);
   salen = va_arg(ap, socklen_t);
   host = va_arg(ap, char*);

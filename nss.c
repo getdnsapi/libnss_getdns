@@ -78,7 +78,7 @@ enum nss_status _nss_getdns_gethostbyaddr2_r (const void *addr, socklen_t len, i
     struct addr_param result_ptr = {.addr_type=REV_HOSTENT, .addr_entry={.p_hostent=result}};
     return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, ttlp, NULL, &respstatus);
     getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
-    debug_log("GETDNS: gethostbyaddr2: STATUS: %d\n", status);
+    debug_log("GETDNS: gethostbyaddr2: STATUS: %d (RESPSTATUS: %d; errnop: %d, h_errnop: %d)\n", status, respstatus, *errnop, *h_errnop);
     UNUSED_PARAM(len);
     return status;
 }

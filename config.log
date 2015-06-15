@@ -33,8 +33,6 @@ PATH: /usr/sbin
 PATH: /usr/bin
 PATH: /sbin
 PATH: /bin
-PATH: /usr/games
-PATH: /usr/local/games
 
 
 ## ----------- ##
@@ -109,7 +107,7 @@ configure:3193: checking whether ln -s works
 configure:3197: result: yes
 configure:3208: checking for getdns_create_context in -lgetdns
 configure:3233: gcc -o conftest -g -O2   conftest.c -lgetdns   >&5
-/tmp/ccf6mTgc.o: In function `main':
+/tmp/ccWYjlbv.o: In function `main':
 /home/hbucuti/getdns/getdns_bsd/conftest.c:20: undefined reference to `getdns_create_context'
 collect2: error: ld returned 1 exit status
 configure:3233: $? = 1
