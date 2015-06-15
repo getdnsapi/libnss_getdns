@@ -10,10 +10,17 @@
 #include "addr_utils.h"
 #include "logger.h"
 
+
+/*
+*TODO: Confirm that all the error codes returned are compatible with POSIX gai_strerror().
+*/
+
 extern uint32_t getdns_getnameinfo (const void*, const int, char*, size_t);
 extern int getdns_eai_error_code(uint32_t);
 
 #define ERR_RETURN(err_code){errno = err_code; h_errno = err_code; return err_code;}
+#define  UNUSED_PARAM(x) ((void)(x))
+
 static int check_flags(int flags)
 {
 	if ((flags & ~(NI_MASK)) !=0 /*Presence of unexpected flag*/
@@ -25,7 +32,7 @@ static int check_flags(int flags)
 	return 0;
 }
 
-static int parse_ipv6_scope_id(const int if_index, const int flags, char *ifname_buf, size_t buflen)
+static int parse_scopeid(const struct sockaddr *sa, const int flags, size_t buflen, char *ifname_buf)
 {
 	/*
 	*The numeric form of the scope-id shall returned if NI_NUMERICSCOPE is set.
@@ -34,14 +41,25 @@ static int parse_ipv6_scope_id(const int if_index, const int flags, char *ifname
 	*But it is mentioned in POSIX.1-2008.
 	*Referring to RFC 4007.
 	*/	
-	memset(ifname_buf, 0, buflen);
-	#ifdef NI_NUMERICSCOPE
-	if((flags & NI_NUMERICSCOPE) != 0)
-	#else
-	if(if_indextoname(if_index, ifname_buf) == NULL)
-	#endif
-		snprintf(ifname_buf, buflen, "%d", if_index);
-	return strlen(ifname_buf) > 0 ? 0 : -1;
+	if(sa->sa_family != AF_INET6)return -1;
+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6*)sa;
+	if (sin6 && (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) || IN6_IS_ADDR_MC_LINKLOCAL(&sin6->sin6_addr) 
+	 	|| IN6_IS_ADDR_SITELOCAL(&sin6->sin6_addr))) 
+	{
+	    if(sin6->sin6_scope_id != 0)
+	    {
+	    	memset(ifname_buf, 0, buflen);
+			#ifdef NI_NUMERICSCOPE
+			if((flags & NI_NUMERICSCOPE) != 0)
+			#else
+			if(if_indextoname(sin6->sin6_scope_id, ifname_buf) == NULL)
+			#endif
+				snprintf(ifname_buf, buflen, "%d", sin6->sin6_scope_id);
+			return strlen(ifname_buf) > 0 ? 0 : -1;
+	    }
+	}
+	UNUSED_PARAM(flags);
+	return 0;
 }
 
 void extract_sa_addr(const struct sockaddr *sa, socklen_t salen, void **addr, int *port, size_t *sa_addrlen, int *err)
@@ -64,6 +82,7 @@ void extract_sa_addr(const struct sockaddr *sa, socklen_t salen, void **addr, in
 			*err = EAI_FAMILY;
 			return;
 	}
+	UNUSED_PARAM(salen);
 	//if(socklen != salen)
 	//	*err = EAI_FAIL;
 }
@@ -114,7 +133,7 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 		{
 			char numaddr[NI_MAXSERV];
 			int numaddrlen = -1;
-			if( ((numaddrlen = snprintf(numaddr, NI_MAXSERV, "%d", ntohs(port))) + 1 < servlen) && numaddrlen > 0)
+			if( ((numaddrlen = snprintf(numaddr, NI_MAXSERV, "%d", ntohs(port))) + 1 < (int)servlen) && numaddrlen > 0)
 			{
 				strncpy(serv, numaddr, numaddrlen+1);
 			}else{
@@ -137,7 +156,6 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 	{
 		char addrstring[NI_MAXHOST];
 		char if_name[IF_NAMESIZE];
-		int if_index;
 		if((flags & NI_NUMERICHOST) != 0)
 		{
 			/*Numeric form of host address was requested instead of its name*/
@@ -148,15 +166,10 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 			/*
 			*Add the IPv6 scope-id if present.
 			*/
-			if_index = ((const struct sockaddr_in6 *)sa)->sin6_scope_id;
-			if(family == AF_INET6 && if_index)
+			if(family == AF_INET6 && parse_scopeid(sa, flags, IF_NAMESIZE, if_name) != 0)
 			{
-				if( (err = parse_ipv6_scope_id(if_index, flags, if_name, IF_NAMESIZE)) != 0)
-				{
-					ERR_RETURN(err);
-				}
 				char *addrstring_endptr = addrstring + strlen(addrstring);
-				if(snprintf(addrstring_endptr, sizeof(addrstring) - (addrstring_endptr - addrstring), "%%%s", if_name) != strlen(if_name));
+				if(snprintf(addrstring_endptr, sizeof(addrstring) - (addrstring_endptr - addrstring), "%%%s", if_name) != (int)strlen(if_name))
 				{
 					ERR_RETURN(EAI_MEMORY);
 				}
@@ -173,7 +186,7 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 			if(family == AF_INET6)
 			{
 				addr_data = (struct in6_addr*)addr;
-				if(addr_data && IN6_IS_ADDR_V4MAPPED(addr_data))
+				if(addr_data && IN6_IS_ADDR_V4MAPPED((struct in6_addr*)addr))
 				{
 					/*IPv4-mapped IPv6 addresses must be resolved just like normal IPv4 addresses*/
 					addr_data += 12;
@@ -201,10 +214,11 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 				char *p = strchr(host, '.');
 				if(p)
 					*p = '\0';
-			}else if(IN6_IS_ADDR_LINKLOCAL(sa) || IN6_IS_ADDR_SITELOCAL(sa))
+			}/*else if(IN6_IS_ADDR_LINKLOCAL(sa) || 
+IN6_IS_ADDR_SITELOCAL(sa))
 			{
 			
-			}
+			}*/
 		}		
 		
 	}

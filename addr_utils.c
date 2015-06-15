@@ -1,9 +1,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <stdlib.h>
+#include <netinet/in.h>
 #include "addr_utils.h"
 
 /*Convert IPv4 to a IPv6 (IPv4-mapped address).*/

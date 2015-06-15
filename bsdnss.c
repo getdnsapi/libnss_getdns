@@ -14,12 +14,20 @@
 
 #define BUFFER_SIZE 1024
 
+struct getnamaddr {
+         struct hostent *hp;
+         char *buf;
+         size_t buflen;
+         int *he;
+};
+     
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyname);
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyname2);
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyaddr);
 NSS_METHOD_PROTOTYPE(__bsdnss_gethostbyaddr2);
 NSS_METHOD_PROTOTYPE(__bsdnss_getaddrinfo);
 NSS_METHOD_PROTOTYPE(__bsdnss_getnameinfo);
+NSS_METHOD_PROTOTYPE(__bsdnss_freeaddrinfo);
 
 
 extern enum nss_status _nss_getdns_gethostbyname_r (const char *name, struct hostent *result, 
@@ -34,20 +42,21 @@ extern enum nss_status _nss_getdns_gethostbyname3_r (const char*, int, struct ho
         char*, size_t, int*, int*, int32_t*, char**);
 extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
 	
-extern int __nss_mod_init();
-extern void __nss_mod_destroy();
+extern int __nss_mod_init(); extern void __nss_mod_destroy();
 
 extern int getdns_mirror_getaddrinfo(const char*, const char*, const struct addrinfo*, struct addrinfo**);
 extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t, char*, size_t, char*, size_t, int);
-extern enum nss_status eai2nss_code(int);
+extern enum nss_status eai2nss_code(int, enum nss_status*);
 
 static ns_mtab methods[]={
   { NSDB_HOSTS, "gethostbyname_r", &__bsdnss_gethostbyname, &_nss_getdns_gethostbyname_r },
   { NSDB_HOSTS, "gethostbyname2_r", &__bsdnss_gethostbyname2, &_nss_getdns_gethostbyname2_r },
   { NSDB_HOSTS, "gethostbyaddr_r", &__bsdnss_gethostbyaddr, &_nss_getdns_gethostbyaddr_r },
   { NSDB_HOSTS, "gethostbyaddr2_r", &__bsdnss_gethostbyaddr2, &_nss_getdns_gethostbyaddr2_r },
-  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_mirror_getaddrinfo },
-  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, &getdns_mirror_getnameinfo },
+  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, 
+&getdns_mirror_getaddrinfo },
+  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, 
+&getdns_mirror_getnameinfo },
   { NSDB_HOSTS, "freeaddrinfo", &__bsdnss_freeaddrinfo, &getdns_mirror_freeaddrinfo}
 };
 
@@ -74,7 +83,7 @@ int __bsdnss_gethostbyname(void *rval,void *cb_data,va_list ap)
   api_funct = cb_data;
   status = api_funct(name, AF_INET, ret, buffer, buflen, errnop, &h_errno);
   status = __nss_compat_result(status, *errnop);
-  if(status == NSS_STATUS_SUCCESS)
+  if(status == NS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
   }else{
@@ -95,18 +104,18 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   enum nss_status (*api_funct)(const char *, int, struct hostent *, char *, size_t, int *, int *);
   name = va_arg(ap, const char*);
   af = va_arg(ap, int);
-  ret = va_arg(ap, struct hostent *);
+  ret = va_arg(ap, struct hostent*);
   buffer = va_arg(ap, char*);
   buflen = va_arg(ap, size_t);
   errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct(name, af, ret, buffer, buflen, errnop, &h_errno);
+  status = api_funct(name, af, ret, buffer, buflen, &errno, errnop);
   status = __nss_compat_result(status, *errnop);
-  if(status == NSS_STATUS_SUCCESS)
+  if(status == NS_SUCCESS)
   {
-    *((struct hostent **)rval) = ret;
+    *((struct hostent**)rval) = ret;
   }else{
-  	*((struct hostent **)rval) = NULL;
+  	*((struct hostent**)rval) = NULL;
   }
   err_log("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
   return status;
@@ -134,7 +143,7 @@ int __bsdnss_gethostbyaddr(void *rval, void *cb_data, va_list ap)
   api_funct = cb_data;
   status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
   status = __nss_compat_result(status, *errnop);
-  if(status == NSS_STATUS_SUCCESS)
+  if(status == NS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
     *result = ret;
@@ -165,7 +174,7 @@ int __bsdnss_gethostbyaddr2(void *rval, void *cb_data, va_list ap)
   api_funct = cb_data;
   status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
   status = __nss_compat_result(status, *errnop);
-  if(status == NSS_STATUS_SUCCESS)
+  if(status == NS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
     *result = ret;
@@ -178,21 +187,19 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
 {
   enum nss_status status;
   int (*api_funct)(const char*, const char*, const struct addrinfo*, struct addrinfo**);
-  char *hostname, *servname;
+  const char *hostname, *servname;
   const struct addrinfo *hints;
-  struct addrinfo **result;
+  struct addrinfo *result = NULL;
   int ret;
   hostname = va_arg(ap, char*);
-  servname = va_arg(ap, char*);
   hints = va_arg(ap, const struct addrinfo*);
-  result = va_arg(ap, struct addrinfo**);
+  servname = va_arg(ap, char*);
   api_funct = cb_data;
-  ret = api_funct(hostname, servname, hints, result);
-  status = eai2nss_code(ret);
-  if(status == NSS_STATUS_SUCCESS && ret == 0)
+  ret = api_funct(hostname, servname, hints, &result);
+  ret = eai2nss_code(ret, &status);
+  if(status == NS_SUCCESS && ret == 0)
   {
-    rval = result;
-
+    *((struct addrinfo**)rval) = result;
   }else{
     rval = NULL;
   }
@@ -202,13 +209,15 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
 
 int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
 {
+  err_log("BSDNSS: getnameinfo()");
   const struct sockaddr *sa;
   socklen_t salen;
   char *host, *serv;
   size_t hostlen, servlen;
-  int flags, ret;
+  int flags, ret, *retval;
   enum nss_status status;
   enum nss_status (*api_funct)(const struct sockaddr*, socklen_t, char*, size_t, char*, size_t, int);
+  retval = va_arg(ap, int*);
   sa = va_arg(ap, const struct sockaddr*);
   salen = va_arg(ap, socklen_t);
   host = va_arg(ap, char*);
@@ -218,8 +227,8 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
   flags = va_arg(ap, int);
   api_funct = cb_data;
   ret = api_funct(sa, salen, host, hostlen, serv, servlen, flags);
-  status = eai2nss_code(ret);
-  if(status != NSS_STATUS_SUCCESS)
+  ret = eai2nss_code(ret, &status);
+  if(status != NS_SUCCESS)
   {
     host = NULL;
     serv = NULL;
@@ -228,13 +237,14 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
   return status;
 }
 
-void __bsdnss_freeaddrinfo(void *rval, void *cb_data, va_list ap)
+int __bsdnss_freeaddrinfo(void *rval, void *cb_data, va_list ap)
 {
-  const struct sockaddr *sa;
+  struct sockaddr *sa;
   void (*api_funct)(struct sockaddr*);
-  sa = va_arg(ap, const struct sockaddr*);
+  sa = va_arg(ap, struct sockaddr*);
   api_funct = cb_data;
   api_funct(sa);
+  return 0;
 }
 
 void nss_module_unregister(ns_mtab *mtab, u_int nelems)
