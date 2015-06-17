@@ -1,5 +1,5 @@
-Enhanced System Resolver
-========================
+Enhanced Stub-Resolver with getdns
+==================================
 
 1. Purpose
 __________
