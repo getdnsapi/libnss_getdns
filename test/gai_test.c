@@ -34,7 +34,7 @@ int main(int argc , char *argv[])
     int ret = 0, ret1 = 0, ret2 = 0, ret1_af=0, ret2_af=0;
     struct sockaddr_storage sa1, sa2;
     if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, &getaddrinfo, &freeaddrinfo)) 
-    	& (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) ) )
+    	& (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, &getaddrinfo, &freeaddrinfo)) ) )
     {
 		printf("\n");
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
@@ -46,14 +46,14 @@ int main(int argc , char *argv[])
 		inet_pton(ret2_af, ip_2, addr_data_ptr(&sa2));
 		char errbuf[2048];
 		int flags = NI_NAMEREQD;
-		ret1 = getnameinfo((struct sockaddr*)&sa1, sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
+		ret1 = getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
 		if(ret1==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_1, hostname, rev_ip_1);
 		else{
 			snprintf(errbuf, sizeof(errbuf), "%s: %s", "getnameinfo [1]", gai_strerror(ret1));
 			herror(errbuf);
 		}
-		ret2 = getdns_mirror_getnameinfo((struct sockaddr*)&sa2, sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
+		ret2 = getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
 		if(ret2==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_2, hostname, rev_ip_2);
 		else{
@@ -71,27 +71,31 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int(*gai_fu
     int status;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = af;
-    hints.ai_flags = AI_V4MAPPED | AI_ALL;
-    if( 0 != (status = gai_func(hostname, NULL, &hints, &res0)) )
-    {
-    	fprintf(stderr, "ERROR INFO: %s\n", gai_strerror(status));
-        herror("getaddrinfo");
-        	return 1;
-    }
-    int count = 0;
-    char tmp[NI_MAXHOST];
-    for(res = res0; res; res = res->ai_next)
-    {
-        struct sockaddr_storage *ss;
-        if(*ret_af == 0)*ret_af = res->ai_family;
-        ss = (struct sockaddr_storage*)res->ai_addr;
-        inet_ntop(ss->ss_family, addr_data_ptr(ss), tmp, sizeof(*ss));
-        if(count == 0)snprintf(ret, res->ai_addrlen , "%s", tmp);
-       /* printf("Addr #%d: %s\n (SA_port: %d, SA_family: %d);\n\
-        PROTO:%d; FAMILY: %d; FLAGS: %d; ADDRLEN: %d; CANONNAME: %s\n", ++count, count == 1? ret : tmp,
-        s_in->sin_port, s_in->sin_family, res->ai_protocol, res->ai_family, res->ai_flags, res->ai_addrlen, res->ai_canonname);*/
-        printf("Addr #%d: %s \n", ++count, count == 1? ret : tmp);
-    }
-    ai_free_func(res0);
+    //hints.ai_flags = AI_V4MAPPED | AI_ALL;
+    int times = 0;
+    //while(++times < 10000){
+		if( 0 != (status = gai_func(hostname, NULL, &hints, &res0)) )
+		{
+			fprintf(stderr, "ERROR INFO: %s\n", gai_strerror(status));
+		    herror("getaddrinfo");
+		    	return 1;
+		}
+		int count = 0;
+		char tmp[NI_MAXHOST];
+		for(res = res0; res; res = res->ai_next)
+		{
+		    struct sockaddr_storage *ss;
+		    if(*ret_af == 0)*ret_af = res->ai_family;
+		    ss = (struct sockaddr_storage*)res->ai_addr;
+		    inet_ntop(ss->ss_family, addr_data_ptr(ss), tmp, sizeof(*ss));
+		    if(count == 0)snprintf(ret, res->ai_addrlen , "%s", tmp);
+		   /* printf("Addr #%d: %s\n (SA_port: %d, SA_family: %d);\n\
+		    PROTO:%d; FAMILY: %d; FLAGS: %d; ADDRLEN: %d; CANONNAME: %s\n", ++count, count == 1? ret : tmp,
+		    s_in->sin_port, s_in->sin_family, res->ai_protocol, res->ai_family, res->ai_flags, res->ai_addrlen, res->ai_canonname);*/
+		    //printf("Addr #%d: %s \n", ++count, count == 1? ret : tmp);
+		}
+		ai_free_func(res0);
+    //}
+    //ai_free_func(res0);
     return 0;
 }

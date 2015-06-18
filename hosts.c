@@ -2,7 +2,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <nss.h>
 #include <errno.h>
 #include <getdns/getdns.h>
 #include "logger.h"
@@ -19,7 +18,6 @@ extern void *addr_data_ptr(struct sockaddr_storage*);
 
 #define  UNUSED_PARAM(x) ((void)(x))
 
-void dd(){}
 /*static getdns_return_t extract_cname(getdns_dict *response_tree, char *intern_buffer, size_t *buflen, char **ret)
 {
 	getdns_bindata *c_name = NULL;
@@ -71,7 +69,7 @@ static getdns_return_t extract_hostent(struct hostent *result, getdns_list *repl
     }
 	memset(result, 0, sizeof(struct hostent)); 
 	result->h_addrtype = af;
-	result->h_length = (af == AF_INET6 ? INET6_ADDRSTRLEN : INET_ADDRSTRLEN);  
+	result->h_length = (af == AF_INET6 ? sizeof(struct in6_addr) : sizeof(struct in_addr));  
 	result->h_addr_list = (char**)intern_buffer; 
 	getdns_dict *ref_reply;
 	ref_reply = NULL;
@@ -358,6 +356,7 @@ static int parse_response(const char *query, getdns_context *context, getdns_dic
         return return_code;
     }
     return_code = getdns_dict_get_list(*response, node_selector, replies_list);
+    //printf("RESPONSE: %s\n", getdns_pretty_print_dict(*response));
     return return_code;
 }
 

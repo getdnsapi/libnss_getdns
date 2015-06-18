@@ -4,9 +4,10 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <nss.h>
 #include <stdlib.h>
 #include <getdns/getdns.h>
+#include <getdns/getdns_extra.h>
+#include "nss_getdns.h"
 #include "logger.h"
 #include "addr_utils.h"
 
@@ -288,4 +289,10 @@ int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const 
 void getdns_mirror_freeaddrinfo(struct addrinfo *ai)
 {
 	__freeaddrinfo(ai);
+}
+
+const char *getdns_module_strerror(int getdns_errcode)
+{
+	const char *err_str = getdns_get_errorstr_by_id(getdns_errcode);
+	return err_str ? err_str : "Unknown GETDNS error";
 }
