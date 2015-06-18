@@ -1,9 +1,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <nss.h>
 #include <getdns/getdns.h>
 #include <errno.h>
+#include "nss_getdns.h"
 
 enum nss_status eai2nss_code(int err, int *status)
 {

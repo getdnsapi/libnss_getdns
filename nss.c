@@ -2,6 +2,7 @@
 #include <resolv.h>
 #include "logger.h"
 #include "nss_getdns.h"
+#include "opt_parse.h"
 
 #define  UNUSED_PARAM(x) ((void)(x))
 
@@ -17,18 +18,17 @@ extern getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_
         
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
-extern struct __res_state _res;
 
 getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 {
-	getdns_return_t return_code = GETDNS_RETURN_GOOD; 
+	getdns_return_t return_code = GETDNS_RETURN_GOOD;
+	int options; 
 	if(!context)
 	{	
 		/*
-		*Initialize resolver configuration from conf files (resolv.conf)
+		*Initialize library configuration from config file (getdns.conf)
 		*/
-		if(res_init() == -1)
-			return GETDNS_RETURN_BAD_CONTEXT;
+		parse_options(CONFIG_FILE, &options);
 		/*
 		Create and check getdns context
 		*/
@@ -45,6 +45,11 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 		Getdns extensions for doing both IPv4 and IPv6
     	*/
 		return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
+		return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
+		if(options & DNSSEC_SECURE_ONLY)
+		{
+			return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
+		}
 		if(return_code != GETDNS_RETURN_GOOD){
 		    err_log("Failed setting (IPv4/IPv6) extension  <ERR_CODE: %d>.\n", return_code);
 		    return return_code;

@@ -2,13 +2,13 @@
 
 #ifndef _GETDNS_NSS_SYSLG_
 #define _GETDNS_NSS_SYSLG_
-
-//#ifdef HAVE_SYSLOG_H
+#include "config.h"
+#ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 #define err_log(args...) syslog(LOG_ERR, args) 
-//#else
-//#define err_log(args...)
-//#endif  
+#else
+#define err_log(args...)
+#endif  
 
 #if DEBUG >= 1
 #define debug_log(args...) err_log(args)

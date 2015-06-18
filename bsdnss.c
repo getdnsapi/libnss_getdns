@@ -1,3 +1,5 @@
+#if defined(__FreeBSD__)
+
 #include <stdarg.h>
 #include <errno.h>
 #include <sys/param.h>
@@ -9,7 +11,6 @@
 #include "nss_getdns.h"
 #include "logger.h"
 
-#if defined(__FreeBSD__)
 #define  UNUSED_PARAM(x) ((void)(x))
 
 #define BUFFER_SIZE 1024

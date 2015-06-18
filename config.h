@@ -9,6 +9,10 @@
 /* Define to 1 if using `alloca.c'. */
 /* #undef C_ALLOCA */
 
+/* Configure the library for LD_PRELOADing (to intercept API functions before
+   libc.) */
+#define ENABLE_API_INTERCEPT 1
+
 /* Define to 1 if you have `alloca', as a function or macro. */
 #define HAVE_ALLOCA 1
 
@@ -42,6 +46,12 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #define HAVE_NETINET_IN_H 1
+
+/* Define to 1 if you have the <nsswitch.h> header file. */
+/* #undef HAVE_NSSWITCH_H */
+
+/* Define to 1 if you have the <nss.h> header file. */
+#define HAVE_NSS_H 1
 
 /* Define to 1 if you have the <resolv.h> header file. */
 #define HAVE_RESOLV_H 1

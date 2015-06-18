@@ -625,6 +625,7 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 module_name
+preload_on_install
 ALLOCA
 EGREP
 GREP
@@ -681,6 +682,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_api_intercept
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1296,6 +1298,12 @@ if test -n "$ac_init_help"; then
      short | recursive ) echo "Configuration of getdns_sysmodule 0.1:";;
    esac
   cat <<\_ACEOF
+
+Optional Features:
+  --disable-option-checking  ignore unrecognized --enable/--with options
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+ --enable-api-intercept  Configure the library for preloading (to intercept API functions before libc)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3675,7 +3683,7 @@ fi
 done
 
 
-for ac_header in arpa/inet.h netdb.h netinet/in.h stdlib.h string.h sys/param.h sys/socket.h syslog.h
+for ac_header in nss.h nsswitch.h arpa/inet.h netdb.h netinet/in.h stdlib.h string.h sys/param.h sys/socket.h syslog.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -3937,6 +3945,19 @@ _ACEOF
 
 fi
 done
+
+
+# Specify build information
+PRELOAD_OPTION="no"
+# Check whether --enable-api-intercept was given.
+if test "${enable_api_intercept+set}" = set; then :
+  enableval=$enable_api_intercept;
+$as_echo "#define ENABLE_API_INTERCEPT 1" >>confdefs.h
+
+   PRELOAD_OPTION="yes"
+fi
+
+preload_on_install=$PRELOAD_OPTION
 
 
 os="$(uname -s)"
