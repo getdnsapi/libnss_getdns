@@ -26,7 +26,9 @@ int main(int argc , char *argv[])
     	af = AF_INET;
     }else if(af == 6)
     	af = AF_INET6;
-    else{
+    else if(af == 7){
+    	af = AF_UNSPEC;
+    }else{
     	fprintf(stderr, "Valid address families: 4 or 6.\n");
         exit(1);
     }
@@ -34,7 +36,7 @@ int main(int argc , char *argv[])
     int ret = 0, ret1 = 0, ret2 = 0, ret1_af=0, ret2_af=0;
     struct sockaddr_storage sa1, sa2;
     if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, &getaddrinfo, &freeaddrinfo)) 
-    	& (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, &getaddrinfo, &freeaddrinfo)) ) )
+    	& (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) ) )
     {
 		printf("\n");
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
@@ -53,7 +55,7 @@ int main(int argc , char *argv[])
 			snprintf(errbuf, sizeof(errbuf), "%s: %s", "getnameinfo [1]", gai_strerror(ret1));
 			herror(errbuf);
 		}
-		ret2 = getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
+		ret2 = getdns_mirror_getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
 		if(ret2==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_2, hostname, rev_ip_2);
 		else{
@@ -73,7 +75,8 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int(*gai_fu
     hints.ai_family = af;
     //hints.ai_flags = AI_V4MAPPED | AI_ALL;
     int times = 0;
-    //while(++times < 10000){
+    //while(++times < 10000)
+    {
 		if( 0 != (status = gai_func(hostname, NULL, &hints, &res0)) )
 		{
 			fprintf(stderr, "ERROR INFO: %s\n", gai_strerror(status));
@@ -95,7 +98,7 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int(*gai_fu
 		    //printf("Addr #%d: %s \n", ++count, count == 1? ret : tmp);
 		}
 		ai_free_func(res0);
-    //}
+    }
     //ai_free_func(res0);
     return 0;
 }

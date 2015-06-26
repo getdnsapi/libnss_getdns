@@ -5,6 +5,38 @@
 #include <errno.h>
 #include "nss_getdns.h"
 
+/*
+*This file implements a compatibility wrapper for error codes and response statuses in getdns, nsswitch, and netdb.
+*TODO: Confirm that all the error codes returned are compatible with POSIX gai_strerror().
+*/
+
+/*
+*wrapper for the deprecated h_errno
+*/
+enum h_errno_val {h_NO_ERROR, h_HOST_NOT_FOUND, h_TRY_AGAIN, h_NO_RECOVERY, h_NO_ADDRESS};
+
+int errno2herrno(int err)
+{
+	switch(err)
+	{
+		case 0:
+			return h_NO_ERROR;
+		case EAI_AGAIN:
+		case EAI_MEMORY:
+			return h_TRY_AGAIN;
+		case EAI_SYSTEM:
+		case EAI_FAIL:
+			return h_NO_RECOVERY;
+		case EAI_NONAME:
+			return h_HOST_NOT_FOUND;
+		default:
+			return h_NO_ADDRESS;
+	}
+}
+
+/*
+*convert to nss code
+*/
 enum nss_status eai2nss_code(int err, int *status)
 {
 	switch(err)
@@ -82,6 +114,7 @@ void getdns_process_statcode(getdns_return_t return_code, uint32_t status, enum 
             *nss_code = NSS_STATUS_SUCCESS;
             return;
         case GETDNS_RESPSTATUS_NO_NAME:
+        case GETDNS_RESPSTATUS_NO_SECURE_ANSWERS:
             *h_errnop = NO_DATA;
             *errnop = ENOENT;
             *nss_code = NSS_STATUS_NOTFOUND;
@@ -91,7 +124,6 @@ void getdns_process_statcode(getdns_return_t return_code, uint32_t status, enum 
             *errnop = EAGAIN;
             *nss_code = NSS_STATUS_TRYAGAIN;
             return;
-        case GETDNS_RESPSTATUS_NO_SECURE_ANSWERS:
         case GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS:
             *h_errnop = NO_DATA;
             *errnop = ENOENT;

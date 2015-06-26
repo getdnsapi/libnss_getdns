@@ -7,18 +7,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include "nss_getdns.h"
 #include "addr_utils.h"
 #include "logger.h"
 
 
-/*
-*TODO: Confirm that all the error codes returned are compatible with POSIX gai_strerror().
-*/
-
-extern uint32_t getdns_getnameinfo (const void*, const int, char*, size_t);
-extern int getdns_eai_error_code(uint32_t);
-
-#define ERR_RETURN(err_code){errno = err_code; h_errno = err_code; return err_code;}
+#define ERR_RETURN(err_code){errno = err_code; h_errno = errno2herrno(err_code); return err_code;}
 #define  UNUSED_PARAM(x) ((void)(x))
 
 static int check_flags(int flags)
@@ -64,27 +58,34 @@ static int parse_scopeid(const struct sockaddr *sa, const int flags, size_t bufl
 
 void extract_sa_addr(const struct sockaddr *sa, socklen_t salen, void **addr, int *port, size_t *sa_addrlen, int *err)
 {
-	//socklen_t socklen;
-	switch (sa->sa_family) {
+	UNUSED_PARAM(salen);
+	int family;
+	if(sa->sa_family == AF_INET || sa->sa_family == AF_INET6)
+	{
+		family = sa->sa_family;
+	}else{
+		family = salen == sizeof(struct in_addr) ? AF_INET : AF_INET6;
+	}
+	switch (family) {
 		case AF_INET:
 			*port = ((const struct sockaddr_in *)sa)->sin_port;
 			*addr = &((struct sockaddr_in *)sa)->sin_addr.s_addr;
-			//socklen = sizeof(struct sockaddr_in);
 			*sa_addrlen = sizeof(struct in_addr);
 			break;
 		case AF_INET6:
 			*port = ((const struct sockaddr_in6 *)sa)->sin6_port;
 			*addr = ((struct sockaddr_in6 *)sa)->sin6_addr.s6_addr;
-			//socklen = sizeof(struct sockaddr_in6);
 			*sa_addrlen = sizeof(struct in6_addr);
 			break;
 		default:
 			*err = EAI_FAMILY;
 			return;
 	}
-	UNUSED_PARAM(salen);
-	//if(socklen != salen)
-	//	*err = EAI_FAIL;
+	/*TODO: We should return EAI_FAMILY if the address length is INVALID for the specified family.
+	*But WHAT does invalid mean? Does it mean TOO SMALL, or just different???
+	*/
+	if(*sa_addrlen > salen)
+		*err = EAI_FAMILY;
 }
 
 int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen,
@@ -195,9 +196,10 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 			}else{
 				addr_data = (struct in_addr*)addr;
 			}
-			if((err = getdns_getnameinfo(addr_data, family, host, hostlen)) != 0)
+			uint32_t respstatus = -1;
+			if((err = getdns_getnameinfo(addr_data, family, host, hostlen, &respstatus)) != 0)
 			{
-				ERR_RETURN(getdns_eai_error_code(err));
+				ERR_RETURN(getdns_eai_error_code(err, respstatus));
 			}
 		}
 		if((flags & NI_NOFQDN) != 0)

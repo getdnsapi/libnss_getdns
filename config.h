@@ -11,7 +11,7 @@
 
 /* Configure the library for LD_PRELOADing (to intercept API functions before
    libc.) */
-#define ENABLE_API_INTERCEPT 1
+/* #undef ENABLE_API_INTERCEPT */
 
 /* Define to 1 if you have `alloca', as a function or macro. */
 #define HAVE_ALLOCA 1

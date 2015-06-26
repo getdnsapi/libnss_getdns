@@ -1,4 +1,4 @@
-#define DEBUG 1
+#define DEBUG 0
 
 #ifndef _GETDNS_NSS_SYSLG_
 #define _GETDNS_NSS_SYSLG_
