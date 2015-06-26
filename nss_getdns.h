@@ -11,6 +11,9 @@
 #define _GETDNS_NSS_H_
 
 #define CONFIG_FILE "/etc/getdns.conf"
+
+#define DNSSEC_FAILURE_LOCALHOST "verisigninc.com"
+
 /*
 *The following definitions are for compatibility with platforms that do not have types defined in nss.h
 */
@@ -66,3 +69,29 @@ struct addr_param
 		} addr_entry;
 		struct addrinfo *hints;
 	};
+
+/*
+Retrieve system global getdns context and default extensions
+*/
+getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext);
+
+getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
+        char *intern_buffer, size_t buflen, int32_t *ttlp, char **canonp, uint32_t *respstatus, uint32_t *dnssec_status);
+      
+/*
+*Wrapper for getaddrinfo(), with the same signature as in the specification, except for the GETDNS_RESPSTATUS_ parameter.
+*/  
+getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *hints, uint32_t *respstatus);
+
+/*
+*Wrapper for getnameinfo(), with the same signature as in the specification, except for the GETDNS_RESPSTATUS_ parameter.
+*/
+getdns_return_t getdns_getnameinfo(const void *addr, const int af, char *nodename, size_t namelen, uint32_t *respstatus);
+
+void getdns_process_statcode(getdns_return_t, uint32_t, enum nss_status *nss_code, int *errnop, int *h_errnop);
+
+enum nss_status eai2nss_code(int, int*);
+
+int getdns_eai_error_code(getdns_return_t, uint32_t);
+
+int errno2herrno(int err);

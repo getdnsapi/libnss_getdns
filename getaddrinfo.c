@@ -18,11 +18,7 @@
 */
 extern void __freeaddrinfo(struct addrinfo*);
 extern void v42v6_map(char*);
-extern enum nss_status _nss_getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*);
-extern enum nss_status eai2nss_code(int, int*);
 extern void *addr_data_ptr(struct sockaddr_storage*);
-extern void getdns_process_statcode(getdns_return_t, uint32_t, enum nss_status*, int*, int*);
-extern getdns_return_t getdns_getaddrinfo(const char*, int, struct addrinfo**, struct addrinfo*, uint32_t*);
 
 int parse_addrtype_hints(const struct addrinfo *hints, const char *protocol, int *hint_err)
 {
@@ -101,6 +97,14 @@ int service_lookup(const char *servname, const char *protocol, int *port, struct
 	return *err == 0 ? 0 : -1;
 }
 
+/*
+*This function is a complete mirror of getaddrinfo() for the DNS source.
+*It uses the getdns API for hostname lookup.
+*TODO: the AI_ADDRCONFIG flag is not yet implemented here!
+*The AI_ADDRCONFIG flag determines whether IPv6/IPv4 is configured on the system.
+*This is needed to limit the families of addresses returned when none is specified in the query.
+*TODO: determine if this function is responsible for parsing the hosts file if the "files" source was given as another source for the "hosts".
+*/
 int __getdns_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,
 	struct addrinfo **res, enum nss_status *status)
 {

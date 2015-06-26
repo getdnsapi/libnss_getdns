@@ -1,23 +1,22 @@
-MODULE_NAME=@module_name@
-DEFS=@DEFS@
-PRELOAD_LIB = @preload_on_install@
-CC = @CC@
-INSTALL_PATH = @libdir@
-LIBS_PATH = @libdir@
-LIBNAME = getdns_shim-1.15.so
+MODULE_NAME=libnss_getdns.so.2
+DEFS=-DHAVE_CONFIG_H
+PRELOAD_LIB = yes
+CC = gcc
+INSTALL_PATH = ${exec_prefix}/lib
+LIBS_PATH = ${exec_prefix}/lib
+LIBNAME = getdns-1.15.so
 LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
 CFLAGS = $(DEFS) -I/usr/local/include -gdwarf-2 -O0 -fPIC -Wall
-LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
-LDLIBS = -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl
+LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined -lgetdns -levent
 
 obj : 
 	$(CC) *.c $(CFLAGS)
 	
 
 build : $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS) $(LDLIBS)
+	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS)
 	
 install : build    
 	cp $(MODULE_NAME) $(LIB_PATH)
