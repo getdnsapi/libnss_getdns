@@ -3211,7 +3211,6 @@ fi
 
 
 # Checks for libraries.
-# FIXME: Replace `main' with a function in `-lgetdns':
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for getdns_create_context in -lgetdns" >&5
 $as_echo_n "checking for getdns_create_context in -lgetdns... " >&6; }

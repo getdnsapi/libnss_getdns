@@ -5,12 +5,18 @@
 #include "logger.h"
 #include "nss_getdns.h"
 #include "opt_parse.h"
+#include "browsers.h"
 
 #define  UNUSED_PARAM(x) ((void)(x))
         
+struct context_holder
+{
+	getdns_context *ctx;
+	int pid;
+};
 
 //static getdns_context *context = NULL;
-getdns_dict *extensions = NULL;
+//getdns_dict *extensions = NULL;
 /*
 *Create/load context.
 *The context should be reused per process.
@@ -19,25 +25,13 @@ getdns_dict *extensions = NULL;
 getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GOOD;
-	getdns_context *context = NULL;
-	getdns_dict *extensions = NULL;
+	static getdns_dict *extensions = NULL;
+	static struct context_holder *ctx_holder = NULL;
 	/*
 	*Initialize library configuration from config file (getdns.conf)
 	*/
-	int options; 
+	int options = 0; 
 	parse_options(CONFIG_FILE, &options);
-	//if(!context)
-	{
-		/*
-		Create and check getdns context
-		*/
-		return_code = getdns_context_create(&context, 1);
-		if(return_code != GETDNS_RETURN_GOOD){
-			err_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
-			return return_code;
-		}
-		getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
-	}
 	if(!extensions)
 	{
 		extensions = getdns_dict_create();
@@ -53,11 +47,35 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 		}
 		if(return_code != GETDNS_RETURN_GOOD){
 		    err_log("Failed setting (IPv4/IPv6) extension  <ERR_CODE: %d>.\n", return_code);
+		    if(extensions != NULL)
+		    	getdns_dict_destroy(extensions);
 		    return return_code;
 		}
 	}
-	assert(context != NULL && extensions != NULL);
-	*ctx = context;
+	if(!ctx_holder)
+	{
+		ctx_holder = malloc(sizeof(struct context_holder));
+		assert(ctx_holder);
+		ctx_holder->pid = -1;
+		ctx_holder->ctx = NULL;
+	}
+	//if(ctx_holder->ctx == NULL || ctx_holder->pid != getpid())
+	{
+		ctx_holder->pid = getpid();
+		return_code = getdns_context_create(&(ctx_holder->ctx), 1);
+		if(return_code != GETDNS_RETURN_GOOD){
+			err_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
+			if(extensions != NULL)
+		    	getdns_dict_destroy(extensions);
+			if(ctx_holder->ctx != NULL)
+				getdns_context_destroy(ctx_holder->ctx);
+			return return_code;
+		}
+		getdns_context_set_resolution_type(ctx_holder->ctx, GETDNS_RESOLUTION_RECURSING);
+		getdns_context_set_use_threads(ctx_holder->ctx, 1);
+	}
+	assert(ctx_holder->ctx != NULL && extensions != NULL);
+	*ctx = ctx_holder->ctx;
 	*ext = extensions;
 	return return_code;
 }
@@ -80,9 +98,10 @@ void __nss_mod_destroy()
 	*/
 	/*if(context != NULL)
 		getdns_context_destroy(context);
-	*/
+	
 	if(extensions != NULL)
 		getdns_dict_destroy(extensions);
+	*/
 }  
   
 enum nss_status _nss_getdns_gethostbyaddr2_r (const void *addr, socklen_t len, int af,
@@ -126,14 +145,6 @@ enum nss_status _nss_getdns_gethostbyname4_r (const char *name, struct gaih_addr
     return_code = getdns_gethostinfo(name, AF_UNSPEC, &result_ptr, buffer, buflen, ttlp, NULL, &respstatus, &dnssec_status);
     getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
     debug_log("GETDNS: %d.gethostbyname4_r(%s): STATUS: %d, ERRNO: %d, h_errno: %d\n", getppid(), name, status, *errnop, *h_errnop);
-    /*
-    *Browsers typically use AF_UNSPEC, so let's redirect such apps when the answer is bogus.
-    */
-    if((respstatus == GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS) || (dnssec_status == GETDNS_DNSSEC_BOGUS))
-    {
-    	return_code = getdns_gethostinfo(DNSSEC_FAILURE_LOCALHOST, AF_UNSPEC, &result_ptr, buffer, buflen, ttlp, NULL, &respstatus, &dnssec_status);
-    	getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
-    }
     return status;
 }
 
@@ -152,11 +163,6 @@ enum nss_status _nss_getdns_gethostbyname3_r (const char *name, int af, struct h
     return_code = getdns_gethostinfo(name, af, &result_ptr, buffer, buflen, ttlp, canonp, &respstatus, &dnssec_status);
     getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
     debug_log("GETDNS: gethostbyname3_r <%s>: STATUS: %d; GETDNS_RESPSTATUS: %d\n", name, status, respstatus);
-    if((respstatus == GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS) || (dnssec_status == GETDNS_DNSSEC_BOGUS))
-    {
-    	return_code = getdns_gethostinfo(DNSSEC_FAILURE_LOCALHOST, af, &result_ptr, buffer, buflen, ttlp, canonp, &respstatus, &dnssec_status);
-    	getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
-    }
     return status;
 }
 

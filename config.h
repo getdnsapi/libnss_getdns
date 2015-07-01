@@ -26,6 +26,9 @@
 /* Define to 1 if you have the <arpa/nameser.h> header file. */
 #define HAVE_ARPA_NAMESER_H 1
 
+/* Define to 1 if you have the `event_base_free' function. */
+/* #undef HAVE_EVENT_BASE_FREE */
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 

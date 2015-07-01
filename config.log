@@ -33,6 +33,8 @@ PATH: /usr/sbin
 PATH: /usr/bin
 PATH: /sbin
 PATH: /bin
+PATH: /usr/games
+PATH: /usr/local/games
 
 
 ## ----------- ##
@@ -105,12 +107,12 @@ configure:3122: checking for a BSD-compatible install
 configure:3190: result: /usr/bin/install -c
 configure:3201: checking whether ln -s works
 configure:3205: result: yes
-configure:3216: checking for getdns_create_context in -lgetdns
-configure:3241: gcc -o conftest -g -O2   conftest.c -lgetdns   >&5
-/tmp/ccsHSE3J.o: In function `main':
+configure:3215: checking for getdns_create_context in -lgetdns
+configure:3240: gcc -o conftest -g -O2   conftest.c -lgetdns   >&5
+/tmp/ccr7XELG.o: In function `main':
 /home/hbucuti/getdns/module/conftest.c:20: undefined reference to `getdns_create_context'
 collect2: error: ld returned 1 exit status
-configure:3241: $? = 1
+configure:3240: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -135,36 +137,36 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:3250: result: no
-configure:3266: checking for sys/types.h
-configure:3266: gcc -c -g -O2  conftest.c >&5
-configure:3266: $? = 0
-configure:3266: result: yes
-configure:3266: checking for netinet/in.h
-configure:3266: gcc -c -g -O2  conftest.c >&5
-configure:3266: $? = 0
-configure:3266: result: yes
-configure:3266: checking for arpa/nameser.h
-configure:3266: gcc -c -g -O2  conftest.c >&5
-configure:3266: $? = 0
-configure:3266: result: yes
-configure:3266: checking for netdb.h
-configure:3266: gcc -c -g -O2  conftest.c >&5
-configure:3266: $? = 0
-configure:3266: result: yes
-configure:3266: checking for resolv.h
-configure:3266: gcc -c -g -O2  conftest.c >&5
-configure:3266: $? = 0
-configure:3266: result: yes
-configure:3294: checking how to run the C preprocessor
-configure:3325: gcc -E  conftest.c
-configure:3325: $? = 0
-configure:3339: gcc -E  conftest.c
+configure:3249: result: no
+configure:3265: checking for sys/types.h
+configure:3265: gcc -c -g -O2  conftest.c >&5
+configure:3265: $? = 0
+configure:3265: result: yes
+configure:3265: checking for netinet/in.h
+configure:3265: gcc -c -g -O2  conftest.c >&5
+configure:3265: $? = 0
+configure:3265: result: yes
+configure:3265: checking for arpa/nameser.h
+configure:3265: gcc -c -g -O2  conftest.c >&5
+configure:3265: $? = 0
+configure:3265: result: yes
+configure:3265: checking for netdb.h
+configure:3265: gcc -c -g -O2  conftest.c >&5
+configure:3265: $? = 0
+configure:3265: result: yes
+configure:3265: checking for resolv.h
+configure:3265: gcc -c -g -O2  conftest.c >&5
+configure:3265: $? = 0
+configure:3265: result: yes
+configure:3293: checking how to run the C preprocessor
+configure:3324: gcc -E  conftest.c
+configure:3324: $? = 0
+configure:3338: gcc -E  conftest.c
 conftest.c:14:28: fatal error: ac_nonexistent.h: No such file or directory
  #include <ac_nonexistent.h>
                             ^
 compilation terminated.
-configure:3339: $? = 1
+configure:3338: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -180,15 +182,15 @@ configure: failed program was:
 | #define HAVE_RESOLV_H 1
 | /* end confdefs.h.  */
 | #include <ac_nonexistent.h>
-configure:3364: result: gcc -E
-configure:3384: gcc -E  conftest.c
-configure:3384: $? = 0
-configure:3398: gcc -E  conftest.c
+configure:3363: result: gcc -E
+configure:3383: gcc -E  conftest.c
+configure:3383: $? = 0
+configure:3397: gcc -E  conftest.c
 conftest.c:14:28: fatal error: ac_nonexistent.h: No such file or directory
  #include <ac_nonexistent.h>
                             ^
 compilation terminated.
-configure:3398: $? = 1
+configure:3397: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -204,69 +206,69 @@ configure: failed program was:
 | #define HAVE_RESOLV_H 1
 | /* end confdefs.h.  */
 | #include <ac_nonexistent.h>
-configure:3427: checking for grep that handles long lines and -e
-configure:3485: result: /bin/grep
-configure:3490: checking for egrep
-configure:3552: result: /bin/grep -E
-configure:3557: checking for ANSI C header files
-configure:3577: gcc -c -g -O2  conftest.c >&5
-configure:3577: $? = 0
-configure:3650: gcc -o conftest -g -O2   conftest.c  >&5
-configure:3650: $? = 0
-configure:3650: ./conftest
-configure:3650: $? = 0
-configure:3661: result: yes
-configure:3674: checking for sys/types.h
-configure:3674: result: yes
-configure:3674: checking for sys/stat.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for stdlib.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for string.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for memory.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for strings.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for inttypes.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for stdint.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3674: checking for unistd.h
-configure:3674: gcc -c -g -O2  conftest.c >&5
-configure:3674: $? = 0
-configure:3674: result: yes
-configure:3689: checking nss.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking nss.h presence
-configure:3689: gcc -E  conftest.c
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking for nss.h
-configure:3689: result: yes
-configure:3689: checking nsswitch.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
+configure:3426: checking for grep that handles long lines and -e
+configure:3484: result: /bin/grep
+configure:3489: checking for egrep
+configure:3551: result: /bin/grep -E
+configure:3556: checking for ANSI C header files
+configure:3576: gcc -c -g -O2  conftest.c >&5
+configure:3576: $? = 0
+configure:3649: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3649: $? = 0
+configure:3649: ./conftest
+configure:3649: $? = 0
+configure:3660: result: yes
+configure:3673: checking for sys/types.h
+configure:3673: result: yes
+configure:3673: checking for sys/stat.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for stdlib.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for string.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for memory.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for strings.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for inttypes.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for stdint.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3673: checking for unistd.h
+configure:3673: gcc -c -g -O2  conftest.c >&5
+configure:3673: $? = 0
+configure:3673: result: yes
+configure:3688: checking nss.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking nss.h presence
+configure:3688: gcc -E  conftest.c
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking for nss.h
+configure:3688: result: yes
+configure:3688: checking nsswitch.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
 conftest.c:58:22: fatal error: nsswitch.h: No such file or directory
  #include <nsswitch.h>
                       ^
 compilation terminated.
-configure:3689: $? = 1
+configure:3688: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -326,14 +328,14 @@ configure: failed program was:
 | # include <unistd.h>
 | #endif
 | #include <nsswitch.h>
-configure:3689: result: no
-configure:3689: checking nsswitch.h presence
-configure:3689: gcc -E  conftest.c
+configure:3688: result: no
+configure:3688: checking nsswitch.h presence
+configure:3688: gcc -E  conftest.c
 conftest.c:25:22: fatal error: nsswitch.h: No such file or directory
  #include <nsswitch.h>
                       ^
 compilation terminated.
-configure:3689: $? = 1
+configure:3688: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -360,61 +362,61 @@ configure: failed program was:
 | #define HAVE_NSS_H 1
 | /* end confdefs.h.  */
 | #include <nsswitch.h>
-configure:3689: result: no
-configure:3689: checking for nsswitch.h
-configure:3689: result: no
-configure:3689: checking arpa/inet.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking arpa/inet.h presence
-configure:3689: gcc -E  conftest.c
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking for arpa/inet.h
-configure:3689: result: yes
-configure:3689: checking for netdb.h
-configure:3689: result: yes
-configure:3689: checking for netinet/in.h
-configure:3689: result: yes
-configure:3689: checking for stdlib.h
-configure:3689: result: yes
-configure:3689: checking for string.h
-configure:3689: result: yes
-configure:3689: checking sys/param.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking sys/param.h presence
-configure:3689: gcc -E  conftest.c
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking for sys/param.h
-configure:3689: result: yes
-configure:3689: checking sys/socket.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking sys/socket.h presence
-configure:3689: gcc -E  conftest.c
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking for sys/socket.h
-configure:3689: result: yes
-configure:3689: checking syslog.h usability
-configure:3689: gcc -c -g -O2  conftest.c >&5
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking syslog.h presence
-configure:3689: gcc -E  conftest.c
-configure:3689: $? = 0
-configure:3689: result: yes
-configure:3689: checking for syslog.h
-configure:3689: result: yes
-configure:3701: checking for int32_t
-configure:3701: gcc -c -g -O2  conftest.c >&5
-configure:3701: $? = 0
-configure:3701: gcc -c -g -O2  conftest.c >&5
+configure:3688: result: no
+configure:3688: checking for nsswitch.h
+configure:3688: result: no
+configure:3688: checking arpa/inet.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking arpa/inet.h presence
+configure:3688: gcc -E  conftest.c
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking for arpa/inet.h
+configure:3688: result: yes
+configure:3688: checking for netdb.h
+configure:3688: result: yes
+configure:3688: checking for netinet/in.h
+configure:3688: result: yes
+configure:3688: checking for stdlib.h
+configure:3688: result: yes
+configure:3688: checking for string.h
+configure:3688: result: yes
+configure:3688: checking sys/param.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking sys/param.h presence
+configure:3688: gcc -E  conftest.c
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking for sys/param.h
+configure:3688: result: yes
+configure:3688: checking sys/socket.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking sys/socket.h presence
+configure:3688: gcc -E  conftest.c
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking for sys/socket.h
+configure:3688: result: yes
+configure:3688: checking syslog.h usability
+configure:3688: gcc -c -g -O2  conftest.c >&5
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking syslog.h presence
+configure:3688: gcc -E  conftest.c
+configure:3688: $? = 0
+configure:3688: result: yes
+configure:3688: checking for syslog.h
+configure:3688: result: yes
+configure:3700: checking for int32_t
+configure:3700: gcc -c -g -O2  conftest.c >&5
+configure:3700: $? = 0
+configure:3700: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:71:53: warning: integer overflow in expression [-Woverflow]
     < (int32_t) (((((int32_t) 1 << N) << N) - 1) * 2 + 2))];
@@ -422,7 +424,7 @@ conftest.c:71:53: warning: integer overflow in expression [-Woverflow]
 conftest.c:70:12: error: storage size of 'test_array' isn't constant
  static int test_array [1 - 2 * !((int32_t) (((((int32_t) 1 << N) << N) - 1) * 2 + 1)
             ^
-configure:3701: $? = 1
+configure:3700: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -501,16 +503,16 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:3701: result: yes
-configure:3712: checking for size_t
-configure:3712: gcc -c -g -O2  conftest.c >&5
-configure:3712: $? = 0
-configure:3712: gcc -c -g -O2  conftest.c >&5
+configure:3700: result: yes
+configure:3711: checking for size_t
+configure:3711: gcc -c -g -O2  conftest.c >&5
+configure:3711: $? = 0
+configure:3711: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:69:21: error: expected expression before ')' token
  if (sizeof ((size_t)))
                      ^
-configure:3712: $? = 1
+configure:3711: $? = 1
 configure: failed program was:
 | /* confdefs.h */
 | #define PACKAGE_NAME "getdns_sysmodule"
@@ -585,56 +587,56 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:3712: result: yes
-configure:3723: checking for uint16_t
-configure:3723: gcc -c -g -O2  conftest.c >&5
-configure:3723: $? = 0
-configure:3723: result: yes
-configure:3735: checking for uint32_t
-configure:3735: gcc -c -g -O2  conftest.c >&5
-configure:3735: $? = 0
-configure:3735: result: yes
-configure:3753: checking for working alloca.h
-configure:3770: gcc -o conftest -g -O2   conftest.c  >&5
-configure:3770: $? = 0
-configure:3778: result: yes
-configure:3786: checking for alloca
-configure:3823: gcc -o conftest -g -O2   conftest.c  >&5
-configure:3823: $? = 0
-configure:3831: result: yes
-configure:3940: checking for memmove
-configure:3940: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3711: result: yes
+configure:3722: checking for uint16_t
+configure:3722: gcc -c -g -O2  conftest.c >&5
+configure:3722: $? = 0
+configure:3722: result: yes
+configure:3734: checking for uint32_t
+configure:3734: gcc -c -g -O2  conftest.c >&5
+configure:3734: $? = 0
+configure:3734: result: yes
+configure:3752: checking for working alloca.h
+configure:3769: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3769: $? = 0
+configure:3777: result: yes
+configure:3785: checking for alloca
+configure:3822: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3822: $? = 0
+configure:3830: result: yes
+configure:3939: checking for memmove
+configure:3939: gcc -o conftest -g -O2   conftest.c  >&5
 conftest.c:58:6: warning: conflicting types for built-in function 'memmove' [enabled by default]
  char memmove ();
       ^
-configure:3940: $? = 0
-configure:3940: result: yes
-configure:3940: checking for memset
-configure:3940: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3939: $? = 0
+configure:3939: result: yes
+configure:3939: checking for memset
+configure:3939: gcc -o conftest -g -O2   conftest.c  >&5
 conftest.c:59:6: warning: conflicting types for built-in function 'memset' [enabled by default]
  char memset ();
       ^
-configure:3940: $? = 0
-configure:3940: result: yes
-configure:3940: checking for strchr
-configure:3940: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3939: $? = 0
+configure:3939: result: yes
+configure:3939: checking for strchr
+configure:3939: gcc -o conftest -g -O2   conftest.c  >&5
 conftest.c:60:6: warning: conflicting types for built-in function 'strchr' [enabled by default]
  char strchr ();
       ^
-configure:3940: $? = 0
-configure:3940: result: yes
-configure:3940: checking for strndup
-configure:3940: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3939: $? = 0
+configure:3939: result: yes
+configure:3939: checking for strndup
+configure:3939: gcc -o conftest -g -O2   conftest.c  >&5
 conftest.c:61:6: warning: conflicting types for built-in function 'strndup' [enabled by default]
  char strndup ();
       ^
-configure:3940: $? = 0
-configure:3940: result: yes
-configure:3940: checking for strtol
-configure:3940: gcc -o conftest -g -O2   conftest.c  >&5
-configure:3940: $? = 0
-configure:3940: result: yes
-configure:4090: creating ./config.status
+configure:3939: $? = 0
+configure:3939: result: yes
+configure:3939: checking for strtol
+configure:3939: gcc -o conftest -g -O2   conftest.c  >&5
+configure:3939: $? = 0
+configure:3939: result: yes
+configure:4089: creating ./config.status
 
 ## ---------------------- ##
 ## Running config.status. ##

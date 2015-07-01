@@ -12,7 +12,6 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 
 # Checks for libraries.
-# FIXME: Replace `main' with a function in `-lgetdns':
 AC_CHECK_LIB([getdns], [getdns_create_context])
 
 # Checks for header files.

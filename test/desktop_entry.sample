@@ -1,0 +1,4 @@
+[Title, or section label?]
+something=in_their_language
+settings[attr]=value or something
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/geo;image/svg+xml;settings[attr]=value or something

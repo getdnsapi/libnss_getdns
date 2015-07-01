@@ -5,6 +5,9 @@
 #include <errno.h>
 #include <assert.h>
 #include <getdns/getdns.h>
+#include <getdns/getdns_extra.h>
+#include <getdns/getdns_ext_libevent.h>
+#include "getdns_libevent.h"
 #include "config.h"
 
 #ifndef _GETDNS_NSS_H_

@@ -1,6 +1,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <netdb.h>
 #include <errno.h>
 #include <stdio.h>
@@ -11,6 +13,7 @@
 #include "logger.h"
 #include "nss_getdns.h"
 #include "addr_utils.h"
+#include "browsers.h"
 
 
 static const getdns_bindata TYPE_IPv4 = {4, (void *)"IPv4"};
@@ -31,6 +34,15 @@ struct callback_fn_arg
     uint32_t *dnssec_status;
 };
 	
+static int should_redirect_bogus(int af)
+{
+	extern char *program_invocation_name;
+	extern char *__progname;
+	char *prog_name = __progname == program_invocation_name ? __progname : strtok(program_invocation_name, " ");
+	struct query_hints hints = {.pid=getpid(), .ppid=getppid(),.af=af, .name=prog_name};
+	return is_known_browser(&hints);
+}
+
 static char *extract_cname(getdns_dict *response_tree, char *cname_label)
 {
 	getdns_bindata *c_name = NULL;
@@ -237,23 +249,22 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
         	*AI_V4MAPPED and AF_INET6 should both be set if the first attempt to retrieve IPv6 addresses returned empty.
         	*/
         	UNUSED_PARAM(rr_type_filter);
-        	if ( (rr_type == rr_type_filter) || (hints_map_all && (rr_type == GETDNS_RRTYPE_A || rr_type == GETDNS_RRTYPE_AAAA)) )
+        	if ( (hints->ai_family == AF_UNSPEC) || (rr_type == rr_type_filter) || (hints_map_all && (rr_type == GETDNS_RRTYPE_A || rr_type == GETDNS_RRTYPE_AAAA)) )
         	{
         		getdns_dict *rdata;
         		getdns_bindata *rdata_raw;
         		return_code = getdns_dict_get_dict(rr, "rdata", &rdata); 
         		return_code = getdns_dict_get_bindata(rdata, "rdata_raw", &rdata_raw);
-        		char *addr_data;
+        		family = rdata_raw->size == 4 ? AF_INET : AF_INET6;
+        		char addr_data[rdata_raw->size];
         		if(rr_type == GETDNS_RRTYPE_A && (hints->ai_flags & AI_V4MAPPED))
         		{
-        			addr_data = alloca(sizeof(struct sockaddr_in6));
         			memcpy(addr_data, rdata_raw->data, rdata_raw->size);
         			v42v6_map(addr_data);
         			family = AF_INET6;
         			addrsize = sizeof(struct sockaddr_in6);
         		}else{
         			addrsize = (rr_type == GETDNS_RRTYPE_AAAA) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
-        			addr_data = alloca(addrsize);
         			memcpy(addr_data, rdata_raw->data, rdata_raw->size);
         		}
         		ai = _allocaddrinfo(family); 
@@ -316,7 +327,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     char *canon_name, *hname;
     canon_name = extract_cname(response, rr_type_filter == GETDNS_RRTYPE_PTR ? "ptrdname" : "canonical_name");
     cname_len = strlen(canon_name);
-    min_space = __alignof__(canon_name) + (__alignof__(struct gaih_addrtuple) * num_replies);
+    min_space = sizeof(canon_name) + (sizeof(struct gaih_addrtuple) * num_replies);
     if( buflen < min_space )
     {
         return_code = GETDNS_RETURN_MEMORY_ERROR;
@@ -327,7 +338,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     /*Fill in hostname*/
     hname = intern_buffer;
     memcpy(hname, canon_name, cname_len+1);
-    idx = __alignof__(canon_name);
+    idx = sizeof(canon_name);
     /*Fill in addresses*/
     for(rec_count = 0; rec_count < num_replies; ++rec_count)
     {
@@ -337,7 +348,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
         return_code &= getdns_dict_get_bindata(next_record, "address_data", &rec_data);
         return_code &= getdns_dict_get_bindata(next_record, "address_type", &addr_type);
         struct gaih_addrtuple *addr_tuple = (struct gaih_addrtuple*) (intern_buffer + idx);
-        idx += __alignof__(struct gaih_addrtuple);
+        idx += sizeof(struct gaih_addrtuple);
         addr_tuple->name = hname;
         addr_tuple->family = rec_data->size == 4 ? AF_INET : AF_INET6;
         memcpy (addr_tuple->addr, rec_data->data, rec_data->size);
@@ -388,12 +399,12 @@ void answer_callbackfn(getdns_context *context, getdns_callback_type_t callback_
 				return_code = extract_hostent(result_ptr->addr_entry.p_hostent, response, af, rr_type_filter, buffer, buflen, respstatus);
 			} 
     	}
-    	getdns_dict_destroy(response);
 	}else if(callback_type == GETDNS_CALLBACK_CANCEL){
 		err_log("The callback was cancelled.");
 	}else{
 		err_log("Callback_type: %d.", callback_type);
 	}
+	getdns_dict_destroy(response);
 }
 
 static int parse_response(const char *query, getdns_context *context, getdns_dict *extensions, struct callback_fn_arg *userarg)
@@ -404,13 +415,13 @@ static int parse_response(const char *query, getdns_context *context, getdns_dic
     Perform lookup asynchronously
     */
     getdns_transaction_t transaction_id = 0;
-    struct event_base *event_base = event_base_new();
-	if (event_base == NULL)
+    struct event_base *evt_base = event_base_new();
+	if (evt_base == NULL)
 	{
 		err_log("Failed to create the event base.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}
-	(void)getdns_extension_set_libevent_base(context, event_base);
+	(void)getdns_extension_set_libevent_base(context, evt_base);
     if(userarg->result_ptr->addr_type == REV_HOSTENT){
     	getdns_dict *address = getdns_dict_create();
     	getdns_bindata address_data = {(userarg->af == AF_INET6 ? 16 : 4), (void *)query };
@@ -421,18 +432,15 @@ static int parse_response(const char *query, getdns_context *context, getdns_dic
 	}else{
         return_code = getdns_address(context, query, extensions, (void*)userarg, &transaction_id, answer_callbackfn);
     }
-    if(return_code == GETDNS_RETURN_BAD_DOMAIN_NAME)
-	{
-		debug_log("Bad IP address: %s", query);
-		event_base_free(event_base);
-		return GETDNS_RETURN_GENERIC_ERROR;
-	}else{
-		 if(event_base_dispatch(event_base) != 0)
-		 	err_log("Event base dispatch failed.");
-	}
-    event_base_free(event_base);
+    /*if(event_base_dispatch(evt_base) != 0)
+    {
+		 	err_log("Event base dispatch failed [[ %s ]]", query);
+	}*/
+	event_base_dispatch(evt_base);
+	event_reinit(evt_base);
+    //event_base_free(evt_base);
     if(return_code != GETDNS_RETURN_GOOD){
-        debug_log("getdns_address_sync: failure(%d)", return_code);
+        debug_log("getdns_address: failure(%d)", return_code);
        	return return_code;
     }
 	switch(*(userarg->respstatus))
@@ -445,7 +453,7 @@ static int parse_response(const char *query, getdns_context *context, getdns_dic
 		case GETDNS_RESPSTATUS_NO_NAME:
 		case GETDNS_RESPSTATUS_ALL_TIMEOUT:
 		case GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS:
-			debug_log("GETDNS: The search returned no results: response code: < %d >\n", *(userarg->respstatus));
+			debug_log("GETDNS(%s): The search returned no results: response code: < %d >\n", query, *(userarg->respstatus));
 			return GETDNS_RETURN_GENERIC_ERROR;
 		default:
 			debug_log("Unkown status code returned: %d\n", *(userarg->respstatus));
@@ -489,27 +497,44 @@ getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *
 		{
 			debug_log("getdns_gethostinfo(<%s>): Failed parsing response: ERROR < %d >\n", name, return_code);
 		}
+		 /*
+		This section is not complete:
+		TODO:
+		1. Do all the getdns data structures need to be cleaned up, or does destroying the top-level node suffice? 
+		*Let's valgrind it and see, maybe?!
+		*/
+		if(canonp && *respstatus == GETDNS_RESPSTATUS_GOOD)
+		{
+			*canonp = result_ptr->addr_entry.p_hostent->h_name;
+		}
+		debug_log("Query(%s) => < %d > - DNSSEC STATUS: {%s}\n", name, *respstatus, getdns_get_errorstr_by_id(*dnssec_status));
+		if(((*respstatus == GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS) || (*dnssec_status == GETDNS_DNSSEC_BOGUS)))
+		{
+			if(should_redirect_bogus(af))
+			{
+				return_code = parse_response(DNSSEC_FAILURE_LOCALHOST, context, extensions, &arg);
+			}else{
+				return_code = GETDNS_RETURN_GENERIC_ERROR;
+				*respstatus = GETDNS_RESPSTATUS_NO_NAME;
+			}
+		}
+		/*
+		*Now the context is not being shared accross multiple calls, so free it now.
+		*TODO: It would be a lot better, really, if the context could be reused at least within a process.
+		*However, that is hard to do when REENTRANCE is required. Hmmm!
+		*Should we use a copy of an initial context? Or is it worthwhile finding a way to reuse it???
+		*/
+		if(context != NULL){
+			getdns_context_destroy(context);
+			context = NULL;
+		}
+		/*if(extensions != NULL){
+			getdns_dict_destroy(extensions);
+			extensions = NULL;
+		}*/
     }else{
-    	debug_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
+   		debug_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
     }
-	/*
-	This section is not complete:
-	TODO:
-	1. Do all the getdns data structures need to be cleaned up, or does destroying the top-level node suffice? 
-	*Let's valgrind it and see, maybe?!
-	*/
-    if(canonp && *respstatus == GETDNS_RESPSTATUS_GOOD)
-    {
-        *canonp = result_ptr->addr_entry.p_hostent->h_name;
-    }
-    debug_log("Query(%s) => < %d > - DNSSEC STATUS: {%s}\n", name, *respstatus, getdns_get_errorstr_by_id(*dnssec_status));
-    /*
-    *Now the context is not being shared accross multiple calls, so free it now.
-    *TODO: It would be a lot better, really, if the context could be reused at least within a process.
-    *However, that is hard to do when REENTRANCE is required. Hmmm!
-    *Should we use a copy of an initial context? Or is it worthwhile finding a way to reuse it???
-    */
-    getdns_context_destroy(context);
     return return_code;
 }
 
@@ -543,10 +568,11 @@ getdns_return_t getdns_getnameinfo (const void *addr, const int af, char *nodena
 /*
 *wrapper for getaddrinfo()
 */
-getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *hints, uint32_t *respstatus)
+getdns_return_t getdns_getaddrinfo(const char *name, int af, struct addrinfo **result, struct addrinfo *ai_hints, uint32_t *respstatus)
 {
-    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=hints};
+    struct addr_param result_ptr = {.addr_type=ADDR_ADDRINFO, .addr_entry={.p_addrinfo=result}, .hints=ai_hints};
     char bufplholder[4];
     uint32_t dnssec_status = GETDNS_DNSSEC_INDETERMINATE;
-    return getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, NULL, NULL, respstatus, &dnssec_status);
+    getdns_return_t ret = getdns_gethostinfo(name, af, &result_ptr, bufplholder, 4, NULL, NULL, respstatus, &dnssec_status);
+    return ret;
 }
