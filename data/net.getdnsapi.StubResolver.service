@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=net.getdnsapi.StubResolver
+Exec=/usr/local/share/getdns_module/getdns_daemon

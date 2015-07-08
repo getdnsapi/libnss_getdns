@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "browsers.h"
 
+#define _GNU_SOURCE
 #define MAXSTRLEN 1024
 
 int find_matched(char *line, const char **keys, const int arr_size)
@@ -75,7 +76,7 @@ int is_known_browser(struct query_hints *params)
 		weights[0] += 0.1;
 	if(params->name)
 	{
-		if(strstr(KNOWN_BROWSERS, params->name) != NULL)
+		if(strstr(KNOWN_BROWSERS, params->name) != NULL || strstr(params->name, "WebKit") != NULL)
 		{
 			weights[1] += 0.1;
 		}
@@ -95,6 +96,20 @@ int is_known_browser(struct query_hints *params)
 	float denom = (weights[0]*weights[1]*weights[2]) + ((1-weights[0]) * (1-weights[1]) * (1-weights[2]) );
 	params->score = ceilf(100*num/denom)/100;
 	return params->score >= (float)THRESHOLD;	
+}
+
+int browser_check(int af)
+{
+	extern char *program_invocation_name;
+	extern char *__progname;
+	char *prog_name = __progname == program_invocation_name ? __progname : strtok(program_invocation_name, " ");
+	if(strchr(prog_name, '/'))
+	{
+		prog_name = strrchr(prog_name, '/') + 1;
+	}
+	struct query_hints hints = {.pid=getpid(), .ppid=getppid(),.af=af, .name=prog_name};
+	err_log("BROWSER? __progname: %s, p_i_n: %s, name: %s", __progname, program_invocation_name, prog_name);
+	return is_known_browser(&hints);
 }
 
 void display_error_page(char *ref_arg, int err_code)

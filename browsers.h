@@ -13,4 +13,5 @@ struct query_hints
 
 int is_known_browser(struct query_hints *params);
 void display_error_page(char *ref_arg, int err_code);
+int browser_check(int af);
 #endif

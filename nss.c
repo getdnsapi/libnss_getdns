@@ -14,68 +14,53 @@ struct context_holder
 	getdns_context *ctx;
 	int pid;
 };
-
-//static getdns_context *context = NULL;
-//getdns_dict *extensions = NULL;
 /*
 *Create/load context.
 *The context should be reused per process.
 *It must therefore be safe to be used for multiple threads.
+*NOTE: This context is maintained by one process. Not safe for forks.
 */
 getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GOOD;
-	static getdns_dict *extensions = NULL;
-	static struct context_holder *ctx_holder = NULL;
+	getdns_dict *extensions = NULL;
+	getdns_context *context = NULL;
 	/*
 	*Initialize library configuration from config file (getdns.conf)
 	*/
-	int options = 0; 
+	int options = 0;
 	parse_options(CONFIG_FILE, &options);
-	if(!extensions)
+	extensions = getdns_dict_create();
+	/*
+	Getdns extensions for doing both IPv4 and IPv6
+	*/
+	return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
+	return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
+	return_code &= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
+	if(options & DNSSEC_SECURE_ONLY)
 	{
-		extensions = getdns_dict_create();
-		/*
-		Getdns extensions for doing both IPv4 and IPv6
-    	*/
-		return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
-		if(options & DNSSEC_SECURE_ONLY)
-		{
-			return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
-		}
-		if(return_code != GETDNS_RETURN_GOOD){
-		    err_log("Failed setting (IPv4/IPv6) extension  <ERR_CODE: %d>.\n", return_code);
-		    if(extensions != NULL)
-		    	getdns_dict_destroy(extensions);
-		    return return_code;
-		}
+		return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
 	}
-	if(!ctx_holder)
+	if(return_code != GETDNS_RETURN_GOOD){
+	    err_log("Failed setting (IPv4/IPv6) extension  <ERR_CODE: %d>.\n", return_code);
+	    if(extensions != NULL)
+	    	getdns_dict_destroy(extensions);
+	    return return_code;
+	}
+	return_code = getdns_context_create(&context, 1);
+	if(return_code != GETDNS_RETURN_GOOD)
 	{
-		ctx_holder = malloc(sizeof(struct context_holder));
-		assert(ctx_holder);
-		ctx_holder->pid = -1;
-		ctx_holder->ctx = NULL;
+		err_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
+		if(extensions != NULL)
+	    	getdns_dict_destroy(extensions);
+		if(context != NULL)
+			getdns_context_destroy(context);
+		return return_code;
 	}
-	//if(ctx_holder->ctx == NULL || ctx_holder->pid != getpid())
-	{
-		ctx_holder->pid = getpid();
-		return_code = getdns_context_create(&(ctx_holder->ctx), 1);
-		if(return_code != GETDNS_RETURN_GOOD){
-			err_log("Failed creating dns context <ERR_CODE: %d>.\n", return_code);
-			if(extensions != NULL)
-		    	getdns_dict_destroy(extensions);
-			if(ctx_holder->ctx != NULL)
-				getdns_context_destroy(ctx_holder->ctx);
-			return return_code;
-		}
-		getdns_context_set_resolution_type(ctx_holder->ctx, GETDNS_RESOLUTION_RECURSING);
-		getdns_context_set_use_threads(ctx_holder->ctx, 1);
-	}
-	assert(ctx_holder->ctx != NULL && extensions != NULL);
-	*ctx = ctx_holder->ctx;
+	getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
+	getdns_context_set_use_threads(context, 1);
+	assert(context != NULL && extensions != NULL);
+	*ctx = context;
 	*ext = extensions;
 	return return_code;
 }

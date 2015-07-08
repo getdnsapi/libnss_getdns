@@ -11,8 +11,8 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 
-# Checks for libraries.
-AC_CHECK_LIB([getdns], [getdns_create_context])
+# Checks getdns library.
+AC_CHECK_LIB([getdns], [getdns_context_create],[], AC_MSG_FAILURE([libgetdns is required but not found on the system. Please install it first.], 1))
 
 # Checks for header files.
 AC_HEADER_RESOLV
@@ -27,6 +27,22 @@ AC_TYPE_UINT32_T
 # Checks for library functions.
 AC_FUNC_ALLOCA
 AC_CHECK_FUNCS([memmove memset strchr strndup strtol])
+
+# Build with dbus-daemon for IPC
+USE_CTX_PROXY="no"
+EXTRA_DEPS_INCLUDES=""
+CTX_PROXY_IMPL=""
+AC_ARG_WITH([context-proxy],
+  [--with-context-proxy	Configure the module to use a DBUS-facilitated context manager.],
+  [AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 
+ 	[AC_DEFINE([HAVE_CONTEXT_PROXY], 1, [Use a managed getdns context via a context proxy]) USE_CTX_PROXY="yes" 
+ 	EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" CTX_PROXY_IMPL="$(pwd)/contexts/*.c"], 
+ 	AC_MSG_FAILURE([dbus not available on this system. Please install dbus before continuing.], 1),
+ 	[]) 
+  ])
+
+AC_SUBST(use_dbus, $USE_CTX_PROXY)
+AC_SUBST(ctx_proxy_impl, $CTX_PROXY_IMPL)
 
 # Specify build information
 PRELOAD_OPTION="no"
@@ -45,6 +61,13 @@ case $os in
 	MODULE_NAME=libnss_getdns.so.2
 	;;
 esac
+AC_SUBST(dbus_includes, $EXTRA_DEPS_INCLUDES)
 AC_SUBST(module_name, $MODULE_NAME)
+AC_SUBST(dbus_service_file, net.getdnsapi.StubResolver.service)
+AC_SUBST(dbus_interface_file, net.getdnsapi.StubResolver.xml)
+AC_SUBST(dbus_services_dir, /usr/share/dbus-1/services)
+AC_SUBST(dbus_interfaces_dir, /usr/share/dbus-1/interfaces)
+AC_SUBST(dbus_service_exec_dir, /usr/local/share/getdns_module)
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([test/Makefile])
 AC_OUTPUT

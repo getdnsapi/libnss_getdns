@@ -15,8 +15,6 @@
 
 #define CONFIG_FILE "/etc/getdns.conf"
 
-#define DNSSEC_FAILURE_LOCALHOST "verisigninc.com"
-
 /*
 *The following definitions are for compatibility with platforms that do not have types defined in nss.h
 */
@@ -44,7 +42,6 @@ struct gaih_addrtuple
     uint32_t scopeid;
   };
   
-#endif
 #endif
 
 typedef enum {ADDR_HOSTENT, ADDR_GAIH, ADDR_ADDRINFO, ADDR_SERVENT, REV_HOSTENT} addr_param_t;
@@ -98,3 +95,5 @@ enum nss_status eai2nss_code(int, int*);
 int getdns_eai_error_code(getdns_return_t, uint32_t);
 
 int errno2herrno(int err);
+
+#endif

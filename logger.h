@@ -1,5 +1,3 @@
-#define DEBUG 1
-
 #ifndef _GETDNS_NSS_SYSLG_
 #define _GETDNS_NSS_SYSLG_
 #include "config.h"
@@ -10,7 +8,7 @@
 #define err_log(args...)
 #endif  
 
-#if DEBUG >= 1
+#if defined(DEBUG) && DEBUG >= 1
 #define debug_log(args...) err_log(args)
 #else
 #define debug_log(args...)

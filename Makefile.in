@@ -1,6 +1,16 @@
 MODULE_NAME=@module_name@
+DBUS_SERVICE_FILE=@dbus_service_file@
+DBUS_SERVICES_DIR=@dbus_services_dir@
+DBUS_INTERFACE_FILE=@dbus_interface_file@
+DBUS_INTERFACES_DIR=@dbus_interfaces_dir@
+SERVICE_EXEC_DIR=@dbus_service_exec_dir@
 DEFS=@DEFS@
+CONTEXT_DAEMON_EXEC=getdns_daemon
+TEST_DIR=test
 PRELOAD_LIB = @preload_on_install@
+USE_DBUS_PROXY = @use_dbus@
+CTX_PROXY_IMPL = @ctx_proxy_impl@
+EXTRA_DEPS_INCLUDES = @dbus_includes@
 CC = @CC@
 INSTALL_PATH = @libdir@
 LIBS_PATH = @libdir@
@@ -8,26 +18,46 @@ LIBNAME = getdns_shim-1.15.so
 LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
-CFLAGS = $(DEFS) -I/usr/local/include -gdwarf-2 -O0 -fPIC -Wall
+CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O0 -fPIC -Wall
 LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
-LDLIBS = -lm -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl
+LDLIBS = -lm -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
+
+build : $(OBJECTS)
+ifeq ($(USE_DBUS_PROXY), yes)
+	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(MODULE_NAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDLIBS)
+else
+	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS) $(LDLIBS)
+endif
+
+build_tests :
+	$(MAKE) -C $(TEST_DIR)
+	
+test : build_tests
+	$(MAKE) -C $(TEST_DIR) test
+	
+install : build    
+	cp $(MODULE_NAME) $(LIB_PATH)
+	ldconfig -v $(INSTALL_PATH)
+	ln -sf $(LIB_PATH) $(LIB_ALIAS)
+ifeq ($(USE_DBUS_PROXY), yes)
+	cp data/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE)
+	cp data/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE)
+	mkdir -p $(SERVICE_EXEC_DIR)
+	cp $(CONTEXT_DAEMON_EXEC) $(SERVICE_EXEC_DIR)/$(CONTEXT_DAEMON_EXEC)
+endif
+	cp data/getdns.conf /etc/getdns.conf
+	
+uninstall:
+	yes | rm -f $(LIB_ALIAS) $(LIB_PATH) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE) $(CONTEXT_DAEMON_EXEC)
+	ldconfig -v $(INSTALL_PATH)
 
 obj : 
 	$(CC) *.c $(CFLAGS)
 	
-
-build : $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS) $(LDLIBS)
-	
-install : build    
-	cp $(MODULE_NAME) $(LIB_PATH)
-#	ldconfig -v $(INSTALL_PATH)
-	ln -sf $(LIB_PATH) $(LIB_ALIAS)
-	
-uninstall:
-	yes | rm -f $(LIB_ALIAS) $(LIB_PATH)
-#	ldconfig -v $(INSTALL_PATH)
-	
 clean :
 	rm -f *.o *.c~ *.h~ $(MODULE_NAME)
+	$(MAKE) -C $(TEST_DIR) clean
+	
+.PHONY: clean test
 

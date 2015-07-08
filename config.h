@@ -26,14 +26,14 @@
 /* Define to 1 if you have the <arpa/nameser.h> header file. */
 #define HAVE_ARPA_NAMESER_H 1
 
-/* Define to 1 if you have the `event_base_free' function. */
-/* #undef HAVE_EVENT_BASE_FREE */
+/* Use a managed getdns context via a context proxy */
+#define HAVE_CONTEXT_PROXY 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `getdns' library (-lgetdns). */
-/* #undef HAVE_LIBGETDNS */
+#define HAVE_LIBGETDNS 1
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1

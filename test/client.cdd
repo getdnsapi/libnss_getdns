@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include "../contexts/ipc_interface.h"
+#include "../context_interface.h"
+#include "../nss_getdns.h"
+
+int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **result);
+
+int main(int argc, char** argv)
+{
+	response_bundle *result = NULL;
+	int ret = ipc_dbus_proxy_resolve("107.191.47.98", 1, 2, &result);
+	if(ret && result != NULL)
+	{
+		printf("\nSTATUS: %d\n=========\n\
+			IPv4 (%d): %s==========\nIPv6 (%d): %s===========\n cname: %s; DNSSEC status: %d\n",
+			result->respstatus, result->ipv4_count, result->ipv4, result->ipv6_count, result->ipv6, result->cname, result->dnssec_status);
+	}else if(result == NULL)
+	{
+		printf("\n\nNULL RESULT!!!!!!!!!!!\n\n");
+	}else{
+		printf("\nret: %d ; result: %p", ret, result);
+	}
+	
+	struct hostent *he = gethostbyname2("smartrwanda.org", 2);
+	if(he)
+	{
+		printf("ALIAS: %s \n ADDR[0]: %s\n", he->h_name, he->h_addr_list[0]);
+	}
+  	return 0;
+}

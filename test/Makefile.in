@@ -1,7 +1,7 @@
-CC = gcc
-USE_DBUS_PROXY = yes
-EXTRA_DEPS_INCLUDES = -I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include  
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/contexts/*.c
+CC = @CC@
+USE_DBUS_PROXY = @use_dbus@
+EXTRA_DEPS_INCLUDES = @dbus_includes@
+CTX_PROXY_IMPL = @ctx_proxy_impl@
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
 LDLIBS = -lm -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
 

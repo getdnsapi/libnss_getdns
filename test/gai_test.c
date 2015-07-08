@@ -5,9 +5,11 @@
 #include<errno.h>
 #include<netdb.h>
 #include<arpa/inet.h>
+#include <unistd.h>
+#include <time.h>
 #include "../logger.h"
 
-int test_gai_funf(char*, char*, int*, int, int(*)(const char*, const char*, int*, const struct addrinfo*, struct addrinfo**), void(struct addrinfo*));
+int test_gai_funf(char*, char*, int*, int, int, int(*)(const char*, const char*, int*, const struct addrinfo*, struct addrinfo**), void(struct addrinfo*));
 extern int getdns_mirror_getaddrinfo(const char*, const char*, const struct addrinfo*, struct addrinfo**);
 extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t, char*, size_t, char*, size_t, int);
 extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
@@ -15,13 +17,14 @@ extern void *addr_data_ptr(struct sockaddr_storage*);
 
 int main(int argc , char *argv[])
 {
-    if(argc <3)
+    if(argc <4 )
     {
-        fprintf(stderr, "Usage: %s <hostname_to_resolve> <address_family[4|6]>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <hostname_to_resolve> <address_family[4|6]> <num_iterations>\n", argv[0]);
         exit(1);
     }
     char *hostname = argv[1];
     int af = atoi(argv[2]);
+    int num_runs = atoi(argv[3]);
     if(af == 4){
     	af = AF_INET;
     }else if(af == 6)
@@ -32,13 +35,16 @@ int main(int argc , char *argv[])
     	fprintf(stderr, "Valid address families: 4 or 6.\n");
         exit(1);
     }
+    clock_t t;
     char ip_1[NI_MAXHOST] = "UNKNOWN", ip_2[NI_MAXHOST] = "UNKNOWN", rev_ip_1[NI_MAXHOST], rev_ip_2[NI_MAXHOST];
     int ret = 0, ret1 = 0, ret2 = 0, ret1_af=0, ret2_af=0;
     struct sockaddr_storage sa1, sa2;
-    if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) 
-    	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, &getaddrinfo, &freeaddrinfo)) ) )
+    printf("\n================\n");
+    t = clock();
+    if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) 
+    	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) ) )
     {
-		printf("\n");
+		
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_2);
 		printf("\n");
@@ -63,10 +69,15 @@ int main(int argc , char *argv[])
 			herror(errbuf);
 		}
 	}   
+	t = clock() - t;
+	double elapsed = ((double)t)/CLOCKS_PER_SEC;
+	printf("================\n");
+	printf("ELAPSED: %.3f seconds", elapsed);
+	printf("\n================\n");
 	return ret;  
 }
 
-int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int(*gai_func)(const char*, const char*, const struct addrinfo*, struct addrinfo**), 
+int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int turns, int(*gai_func)(const char*, const char*, const struct addrinfo*, struct addrinfo**), 
 	void(ai_free_func)(struct addrinfo*))
 {
     struct addrinfo hints, *res=NULL, *res0 = NULL;
@@ -75,7 +86,7 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int(*gai_fu
     hints.ai_family = af;
     //hints.ai_flags = AI_V4MAPPED | AI_ALL;
     int times = 0;
-    //while(++times < 20)
+    while(times++ < turns)
     {
 		if( 0 != (status = gai_func(hostname, NULL, &hints, &res0)) )
 		;/*{

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/">
+	<interface name="net.getdnsapi.StubResolver">
+<!-- Functions -->
+		<method name="secure_resolve">
+			<!-- in -->
+			<arg type="s" name="query" direction="in" />
+			<arg type="i" name="reverse" direction="in" />
+			<arg type="i" name="af" direction="in" />
+			<!-- out -->
+			<arg type="i" name="success" direction="out" />
+			<arg type="i" name="respstatus" direction="out" />
+			<arg type="i" name="dnssec_status" direction="out" />
+			<arg type="t" name="ttl" direction="out" />
+			<arg type="i" name="ipv4_count" direction="out" />
+			<arg type="i" name="ipv6_count" direction="out" />
+			<arg type="s" name="ipv4_data" direction="out" />
+			<arg type="s" name="ipv6_data" direction="out" />
+			<arg type="s" name="cname" direction="out" />
+		</method>
+	</interface>
+</node>
