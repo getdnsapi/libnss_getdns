@@ -1,11 +1,11 @@
 CC = gcc
-USE_DBUS_PROXY = yes
-EXTRA_DEPS_INCLUDES = -I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include  
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/contexts/*.c
+USE_DBUS_PROXY = no
+EXTRA_DEPS_INCLUDES = 
+CTX_PROXY_IMPL = 
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
-LDLIBS = -lm -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
+LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
 
-all : browser_detect options_parse getaddrinfo
+all : browser_detect options_parse getaddrinfo http_test
 
 test : options_parse_test getaddrinfo_test browsers_test clean
 	
@@ -20,24 +20,31 @@ options_parse : opt_parse_test.c ../opt_parse.c ../opt_parse.h
 	
 options_parse_test : options_parse
 	./opt_parse_test
-	
-getaddrinfo : gai_test.c ../*.c $(CTX_PROXY_IMPL)
+
+http_test: http_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL)
 ifeq ($(USE_DBUS_PROXY), yes)
-	$(CC) -o gai_test gai_test.c ../*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDLIBS)
+	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDLIBS) -DHTTP_MAIN
 else
-	$(CC) -o gai_test gai_test.c ../*.c $(CFLAGS) $(LDLIBS)
+	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CFLAGS) $(LDLIBS) -DHTTP_MAIN
+endif
+
+getaddrinfo : gai_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL)
+ifeq ($(USE_DBUS_PROXY), yes)
+	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDLIBS)
+else
+	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CFLAGS) $(LDLIBS)
 endif
 	 
 getaddrinfo_test : getaddrinfo
 	./gai_test getdnsapi.net 4 1
 	./gai_test getdnsapi.net 6 1
 	./gai_test getdnsapi.net 7 1
+	./gai_test getdn-config.localhost 4 1
+	./gai_test getdns-errors.localhost 4 1
 	./gai_test dnssec-failed.org 4 1
 	time ./gai_test getdnsapi.net 4 10
 	time ./gai_test getdnsapi.net 4 100
 	time ./gai_test getdnsapi.net 4 1000
-	#./gai_test dnssec-failed.org 6
-	#./gai_test dnssec-failed.org 7
 
 	
 clean :

@@ -6,14 +6,13 @@
 #include <assert.h>
 #include <getdns/getdns.h>
 #include <getdns/getdns_extra.h>
-#include <getdns/getdns_ext_libevent.h>
-#include "getdns_libevent.h"
 #include "config.h"
 
 #ifndef _GETDNS_NSS_H_
 #define _GETDNS_NSS_H_
 
 #define CONFIG_FILE "/etc/getdns.conf"
+#define CONFIG_FILE_LOCAL "preferences"
 
 /*
 *The following definitions are for compatibility with platforms that do not have types defined in nss.h

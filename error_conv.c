@@ -6,11 +6,6 @@
 #include "nss_getdns.h"
 
 /*
-*This file implements a compatibility wrapper for error codes and response statuses in getdns, nsswitch, and netdb.
-*TODO: Confirm that all the error codes returned are compatible with POSIX gai_strerror().
-*/
-
-/*
 *wrapper for the deprecated h_errno
 */
 enum h_errno_val {h_NO_ERROR, h_HOST_NOT_FOUND, h_TRY_AGAIN, h_NO_RECOVERY, h_NO_ADDRESS};

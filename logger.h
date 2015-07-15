@@ -1,3 +1,4 @@
+#define DEBUG 1
 #ifndef _GETDNS_NSS_SYSLG_
 #define _GETDNS_NSS_SYSLG_
 #include "config.h"

@@ -95,7 +95,7 @@
 		padding-left: 15px;
 		margin-right: auto;
 		margin-left: auto;
-		width: 75%;
+		width: 75%%;
 		text-align: center;
 	}
 	.col {
@@ -106,6 +106,9 @@
 	}
 	.text-center {
 		text-align: center;
+	}
+	.text-left{
+		text-align: left !important;
 	}
 	.list-unstyled{
 		list-style-type: none;
@@ -121,13 +124,13 @@
 		font-size: 21px;
 	}
 	.col-12{
-		width: 100%;
+		width: 100%%;
 	}
 	.col-3{
-		width: 25%;
+		width: 25%%;
 	}
 	.col-9{
-		width: 75%;
+		width: 75%%;
 	}
 	.row{
 		display: inline-flex;
@@ -138,7 +141,7 @@
 	}
 	.form-control{
 		display: block;
-		width: 100%;
+		width: 100%%;
 		height: 34px;
 		padding: 6px 12px;
 		font-size: 14px;
@@ -159,9 +162,31 @@
 	}
 	label {
 		display: inline-block;
-		max-width: 100%;
+		max-width: 100%%;
 		margin-bottom: 5px;
 		font-weight: 700;
+		cursor: pointer;
+	}
+	input[type="radio"]:checked+label::after{
+		content: " \2705";
+		position: absolute;
+		padding: 2px;
+		color: blue;
+		text-shadow: 0 0 2mm green;
+		font-weight: bold;
+	}
+	input.submitted+label::after{
+		content: "(Restart browser to apply changes.)";
+		padding: 2px;
+		color: red;
+		font-size: 80%%;
+	}
+	input[type="radio"]:not(checked)+label{
+		transform: rotateX(30deg);
+		font-weight: lighter;
+	}
+	input[type="radio"]:checked+label{
+		text-shadow: 0 0 2mm #337ab7;
 	}
     </style>
 </head>
@@ -175,33 +200,87 @@
         <div class="row">
             <form method="POST" class="col col-12 text-center">
             	<div class="form-group">
-            		<h2>DNSSEC settings</h2>
-		            <select name="dnssec" class="form-control">
-		            	<option value="validate" class="btn-info">Accept Insecure, but reject bogus answers</option>
-		            	<option value="secure_only" class="btn-primary">Accept ONLY SECURE answers</option>
-		            	<option value="disable" class="btn-danger">No DNSSEC</option>
-		            </select>
+            		<h2>DNSSEC settings </h2>
+		            <div class="form-control text-left">
+		            	<input id="dnssec_validate" type="radio" name="dnssec" value="validate" class="btn-info"/>
+		            	<label for="dnssec_validate">Accept Insecure, but reject bogus answers</label><br/>
+		            </div>
+		            <div class="form-control text-left">
+		            	<input id="dnssec_secure_only" type="radio" name="dnssec" value="secure_only" class="btn-primary"/>
+		            	<label for="dnssec_secure_only">Accept ONLY SECURE answers</label><br/>
+		            </div>
             	</div>
-            	<div class="form-group"></div>
+            	<div class="form-group">
 		        	 <h2>TLS settings</h2>
-		            <select name="tls" class="form-control">
-		            	<option value="require_tls" class="btn-warning">Fail if no TLS</option>
-		            	<option value="prefer_tls" class="btn-primary">Try TLS with fallback to TCP/UDP</option>
-		            	<option value="no_tls" class="btn-danger">No TLS</option>
-		            </select>
+		            <div class="form-control text-left">
+		            	<input id="tls_require_tls" type="radio" name="tls" value="require_tls" class="btn-warning"/>
+		            	<label for="tls_require_tls">Fail if no TLS</label>
+		            </div>
+		            <div class="form-control text-left">
+		            	<input id="tls_prefer_tls" type="radio" name="tls" value="prefer_tls" class="btn-primary"/>
+		            	<label for="tls_prefer_tls">Try TLS with fallback to TCP/UDP</label>
+		            </div>
+		            <div class="form-control text-left">
+		            	<input id="tls_disable_tls" type="radio" name="tls" value="disable_tls" class="btn-danger"/>
+		            	<label for="tls_disable_tls">No TLS</label>
+		            </div>
+		        </div>
             	<div class="form-group">
 		        	<h2>Logging</h2>
-		            <select name="logging" class="form-control">
-		            	<option value="critical">Critical errors</option>
-		            	<option value="warning">Warnings</option>
-		            	<option value="info">Info (start, changes)</option>
-		            	<option value="debug">Verbose</option>
-		            </select>
+		        	<div class="form-control text-left">
+		        		<input type="radio" name="logging" id="logging_critical" value="critical"/>
+		        		<label for="logging_critical">Critical errors</label>
+		        	</div>
+		        	<div class="form-control text-left">
+		        		<input type="radio" name="logging" id="logging_warning" value="warning"/>
+		        		<label for="logging_warning">Warnings</label>
+		        	</div>
+		        	<div class="form-control text-left">
+		        		<input type="radio" name="logging" id="logging_info" value="info"/>
+		        		<label for="logging_info">Info (start, changes)</label>
+		        	</div>
+		        	<div class="form-control text-left">
+		        		<input type="radio" name="logging" id="logging_verbose" value="verbose"/>
+		        		<label for="logging_verbose">Verbose</label>
+		        	</div>
             	</div>
                 <hr>
+                <div class="error">Browsers will need to be restarted for changes to apply.</div>
                 <button class="btn btn-primary" type="submit">Save Preferences</button>
             </form>
         </div>
     </div>
 </body>
+<script type="text/javascript">
+	function submit_form(ev){
+		var offs = 0;
+		var nIntervId;
+		var el = ev.target.parentNode;
+		if(el == null || el == undefined){
+			return;
+		}
+		nIntervId = setInterval(function(){
+				el.style.transform = "rotateX("+ offs+ "deg)";
+				offs += 5;
+				if(offs > 360){
+					clearInterval(nIntervId);					
+					document.getElementsByTagName("form")[0].submit();
+					document.getElementById(ev.target.id).classList.add("submitted");
+				}
+			}, 45);
+	}
+	function logme(el){console.log(el);}
+	var options_str = "%s";
+	var options = options_str.split(";");
+	var inputs = document.getElementsByTagName("input");
+	for(i=0; i<options.length; i++){
+		var el = document.getElementById(options[i].trim());
+		if(el != null){
+			el.checked = true;
+		}
+	}
+	for(i=0; i<inputs.length; i++){
+		inputs[i].addEventListener("change", submit_form);
+	}	
+</script>
 </html>

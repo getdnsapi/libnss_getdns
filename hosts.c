@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <getdns/getdns.h>
 #include <getdns/getdns_extra.h>
-#include <getdns/getdns_ext_libevent.h>
-#include "getdns_libevent.h"
 #include "logger.h"
 #include "nss_getdns.h"
 #include "addr_utils.h"
@@ -61,15 +59,19 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		debug_log("extract_addrtuple():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}
-	if(af == AF_INET6)
+	if((af == AF_INET6) || ((af == AF_UNSPEC) && (response->ipv6_count > 0)))
 	{
 		num_answers = response->ipv6_count;
 		addr_string = response->ipv6;
 		result->h_length = sizeof(struct in6_addr);
-	}else if(af == AF_INET){
+	}else if(af == AF_INET || af == AF_UNSPEC){
 		num_answers = response->ipv4_count;
 		addr_string = response->ipv4;
 		result->h_length = sizeof(struct in_addr);
+	}else{
+		debug_log("getdns_gethostinfo: Address family not supported: %d .", af);
+		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
+        return GETDNS_RETURN_WRONG_TYPE_REQUESTED;
 	}
 	if(num_answers < 1){
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
@@ -88,9 +90,10 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 	}
 	for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
     {
-		char tmp_name[af == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN];
-		inet_pton(af, addr_list[answer_idx], tmp_name);  
-		size_t len = strlen(tmp_name)+1;
+		char tmp_name[af == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr)];
+		memset(tmp_name, 0, sizeof(tmp_name));
+		inet_pton(af, addr_list[answer_idx], tmp_name);
+		size_t len = sizeof(tmp_name);
 		if(buflen < len)
 		{
 			debug_log("GETDNS: buffer too small.\n");
@@ -114,7 +117,7 @@ getdns_return_t add_addrinfo(struct addrinfo **result_ptr, struct addrinfo *hint
 	char addr_data[sizeof(struct in6_addr)];
 	inet_pton(family, addr_string, addr_data);
 	struct addrinfo *ai;
-	if(addr_size == IN_ADDRLEN && hints->ai_family != AF_INET)
+	if(addr_size == IN_ADDRLEN && hints->ai_family == AF_INET6)
 	{
 		v42v6_map(addr_data);
 		family = AF_INET6;
@@ -202,13 +205,14 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
 	}else{
 		hints->ai_flags &= ~AI_V4MAPPED;
 	}
-	if((hints->ai_family == AF_INET) || (hints->ai_family == AF_UNSPEC))
-	{
-		return_code = parse_addrinfo(response->ipv4, response->cname, response->ipv4_count, IN_ADDRLEN, result, hints);
-	}else if(hints->ai_family == AF_INET6)
+	if((hints->ai_family == AF_INET6)  || (hints->ai_family == AF_UNSPEC))
 	{
 		return_code = parse_addrinfo(response->ipv6, response->cname, response->ipv6_count, IN6_ADDRLEN, result, hints);
 	}
+	if((hints->ai_family == AF_INET) || ((hints->ai_family == AF_UNSPEC) && (*result == NULL)))
+	{
+		return_code = parse_addrinfo(response->ipv4, response->cname, response->ipv4_count, IN_ADDRLEN, result, hints);
+	} 
 	if(hints_map_all || ((*result == NULL) && hints_v4mapped))
 	{
 		return_code = parse_addrinfo(response->ipv4, response->cname, response->ipv4_count, IN_ADDRLEN, result, hints);
@@ -227,8 +231,13 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
 	{
 		debug_log("extract_addrtuple():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
+	}else if(response->ipv4_count + response->ipv6_count <= 0)
+	{
+		debug_log("extract_addrtuple(): No answers: %s.", getdns_get_errorstr_by_id(response->respstatus));
+		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
+		return GETDNS_RETURN_GOOD;
 	}
-	size_t rec_count, num_answers;
+	size_t rec_count = 0, num_answers = 0;
 	size_t idx, min_space, cname_len;
 	num_answers = response->ipv4_count + response->ipv6_count;
     char *canon_name = response->cname;
@@ -254,40 +263,39 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
         addr_tuple->family = family;
 		char ip_data[family == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN];
 		inet_pton(family, data, ip_data); 
-		size_t len = strlen(ip_data);
-        memcpy (addr_tuple->addr, ip_data, len);
+		size_t len = sizeof(ip_data);
+        memcpy(addr_tuple->addr, ip_data, len);
 	    addr_tuple->scopeid = 0;
 	    addr_tuple->next = NULL;
 	    if(rec_count > 0){
 	        gaih_ptr->next = addr_tuple;
-	    }
-	    else{
+	    }else{
 	        *result_addrtuple = addr_tuple;
 	    }
 	    gaih_ptr = addr_tuple;
-    }
-    if(response->ipv4_count > 0)
-    {
-    	char *addr_list[response->ipv4_count];
-    	int num = parse_addr_list(response->ipv4, addr_list, response->ipv4_count);
-		for(rec_count = 0; rec_count < num; ++rec_count)
-		{
-		    add_addrtuple(addr_list[rec_count], AF_INET);
-		}
     }
     if(response->ipv6_count > 0)
     {
     	char *addr_list[response->ipv6_count];
     	int num = parse_addr_list(response->ipv6, addr_list, response->ipv6_count);
-    	int addr_idx;
+		for(rec_count = 0; rec_count < num; ++rec_count)
+		{
+		    add_addrtuple(addr_list[rec_count], AF_INET6);
+		}
+    }
+    if(response->ipv4_count > 0)
+    {
+    	char *addr_list[response->ipv4_count];
+    	int num = parse_addr_list(response->ipv4, addr_list, response->ipv4_count);
+		int addr_idx;
 		for(addr_idx = 0; addr_idx < num; ++addr_idx)
 		{
-		    add_addrtuple(addr_list[addr_idx], AF_INET6);
+		    add_addrtuple(addr_list[addr_idx], AF_INET);
 		    rec_count++;
 		}
     }
     assert(idx <= min_space); /*Check if we didn't write past the intended space...*/
-    *respstatus = num_answers > 0 ? GETDNS_RESPSTATUS_GOOD : GETDNS_RESPSTATUS_NO_NAME;
+    *respstatus = rec_count > 0 ? GETDNS_RESPSTATUS_GOOD : GETDNS_RESPSTATUS_NO_NAME;
 	return GETDNS_RETURN_GOOD;
 }
 
@@ -320,7 +328,7 @@ int resolve(const char *query, struct callback_fn_arg *userarg)
 			return GETDNS_RETURN_GENERIC_ERROR;
 		}else{
 			*dnssec_status = response->dnssec_status;
-			*respstatus = response->respstatus;
+			*respstatus = response->respstatus;	
     		if(result_ptr->addr_type == ADDR_GAIH)
 			{
 				return_code =  extract_addrtuple(result_ptr->addr_entry.p_gaih, response, buffer, buflen, respstatus);

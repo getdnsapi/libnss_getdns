@@ -1,9 +1,0 @@
-#include <stdio.h>
-#include "../contexts/ipc_interface.h"
-
-int main(int argc, char** argv)
-{
-	printf("Listening...........\n");
-   	ipc_dbus_listen();
-   	return 0;
-}

@@ -108,11 +108,6 @@ int browser_check(int af)
 		prog_name = strrchr(prog_name, '/') + 1;
 	}
 	struct query_hints hints = {.pid=getpid(), .ppid=getppid(),.af=af, .name=prog_name};
-	err_log("BROWSER? __progname: %s, p_i_n: %s, name: %s", __progname, program_invocation_name, prog_name);
+	debug_log("BROWSER? __progname: %s, p_i_n: %s, name: %s", __progname, program_invocation_name, prog_name);
 	return is_known_browser(&hints);
-}
-
-void display_error_page(char *ref_arg, int err_code)
-{
-	
 }

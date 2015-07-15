@@ -1,0 +1,7 @@
+#option code		(interpreted in textual format below).
+#Note this is redundant since this code alone would suffice.
+MIN_DEFAULTS: 163
+	#DNSSEC settings
+dnssec: validate secure_only 
+	#Transport mode preferences
+tls: disable_tls require_tls 

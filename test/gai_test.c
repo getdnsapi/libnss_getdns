@@ -15,6 +15,7 @@ extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t, char*, s
 extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
 extern void *addr_data_ptr(struct sockaddr_storage*);
 
+void dd(){}
 int main(int argc , char *argv[])
 {
     if(argc <4 )
@@ -36,15 +37,16 @@ int main(int argc , char *argv[])
         exit(1);
     }
     clock_t t;
-    char ip_1[NI_MAXHOST] = "UNKNOWN", ip_2[NI_MAXHOST] = "UNKNOWN", rev_ip_1[NI_MAXHOST], rev_ip_2[NI_MAXHOST];
+    char ip_1[NI_MAXHOST] = "UNKNOWN", ip_2[NI_MAXHOST] = "UNKNOWN", 
+    	rev_ip_1[NI_MAXHOST], rev_ip_2[NI_MAXHOST];
     int ret = 0, ret1 = 0, ret2 = 0, ret1_af=0, ret2_af=0;
     struct sockaddr_storage sa1, sa2;
+    struct hostent *he = NULL;
     printf("\n================\n");
     t = clock();
     if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) 
-    	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) ) )
+    	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) ))
     {
-		
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_2);
 		printf("\n");
@@ -62,6 +64,7 @@ int main(int argc , char *argv[])
 			herror(errbuf);
 		}
 		ret2 = getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
+		dd();
 		if(ret2==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_2, hostname, rev_ip_2);
 		else{
@@ -104,14 +107,13 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int turns, 
 		    if(*ret_af == 0)*ret_af = res->ai_family;
 		    ss = (struct sockaddr_storage*)res->ai_addr;
 		    inet_ntop(ss->ss_family, addr_data_ptr(ss), tmp, sizeof(*ss));
-		    if(count == 0)snprintf(ret, res->ai_addrlen , "%s", tmp);
-		   /* printf("Addr #%d: %s\n (SA_port: %d, SA_family: %d);\n\
+		    snprintf(ret, res->ai_addrlen , "%s", tmp);
+		   /*printf("Addr #%d: %s\n (SA_port: %d, SA_family: %d);\n\
 		    PROTO:%d; FAMILY: %d; FLAGS: %d; ADDRLEN: %d; CANONNAME: %s\n", ++count, count == 1? ret : tmp,
 		    s_in->sin_port, s_in->sin_family, res->ai_protocol, res->ai_family, res->ai_flags, res->ai_addrlen, res->ai_canonname);*/
 		    //printf("Addr #%d: %s \n", ++count, count == 1? ret : tmp);
 		}
 		ai_free_func(res0);
     }
-    //ai_free_func(res0);
     return 0;
 }

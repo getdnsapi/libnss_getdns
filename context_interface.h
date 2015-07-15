@@ -3,11 +3,12 @@
 #ifndef GETDNS_CONTEXT_MANAGER_INTERFACE_H
 #define GETDNS_CONTEXT_MANAGER_INTERFACE_H
 
-#define GETDNS_ERR_IPV4 "ipv4:127.127.127.1"
-#define GETDNS_ERR_IPV6 "ipv6:::ffff:127.127.127.1"
-#define GETDNS_CONFIG_IPV4 "ipv4:127.127.127.2"
-#define GETDNS_CONFIG_IPV6 "ipv6:::ffff:127.127.127.2"
-#define GETDNS_CONFIG_LOCALNAME "getdns.localhost"
+#define GETDNS_ERR_IPV4 "ipv4:127.127.127.127"
+#define GETDNS_ERR_IPV6 "ipv6:::ffff:127.127.127.127"
+#define GETDNS_ERR_LOCALNAME "getdns-errors.localhost"
+#define GETDNS_CONFIG_IPV4 "ipv4:127.127.127.128"
+#define GETDNS_CONFIG_IPV6 "ipv6:::ffff:127.127.127.128"
+#define GETDNS_CONFIG_LOCALNAME "getdns-config.localhost"
 /*
 This structure holds a bundle of addresses for a domain name resolution answer.
 */
@@ -24,17 +25,21 @@ typedef struct response_addr_bundle
 } response_bundle;
 	
 /*
-*Response for negative answers
+*Response bundle for negative answers
 */
 extern response_bundle RESP_BUNDLE_EMPTY;
 /*
-*Response for local configuration pages
+*Response bundle for local configuration pages
 */
 extern response_bundle RESP_BUNDLE_LOCAL_CONFIG;
 /*
-*Response for errors (DNSSEC/TLS)
+*Response bundle for errors (DNSSEC/TLS)
 */
 extern response_bundle RESP_BUNDLE_LOCAL_ERR;
+/*
+*Test response bundle for bogus
+*/
+extern response_bundle RESP_BUNDLE_LOCAL_BOGUS;
 
 /*
 *Function to be implemented to manage the GETDNS context and extensions.
@@ -49,4 +54,5 @@ typedef int (*getdns_context_proxy)(char* name_or_address_as_ascii_string, int b
 
 int resolve_with_managed_ctx(char* query, int is_reverse, int af, response_bundle **result);
 
+const char *get_dnssec_code_description(int code);
 #endif

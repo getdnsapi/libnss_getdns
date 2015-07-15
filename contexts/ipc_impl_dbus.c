@@ -7,18 +7,17 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/file.h>
 #include "../nss_getdns.h"
 #include "../logger.h"
 #include "../context_interface.h"
 #include "../query.h"
-#include "http.h"
 #include "ipc_interface.h"
 #include "../context_interface.h"
 #include "../config.h"
 
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
-size_t size_of_local_addr = sizeof(GETDNS_CONFIG_LOCALNAME);
 
 /*
 Sends method call over bus.
@@ -27,27 +26,10 @@ Method result data is placed into result
 */
 int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **result)
 {
-	if(strncmp(query, GETDNS_CONFIG_LOCALNAME, size_of_local_addr)==0)
-	{
-		*result = malloc(sizeof(RESP_BUNDLE_LOCAL_CONFIG));
-		if(*result)
-		{
-			(*result)->respstatus = RESP_BUNDLE_LOCAL_CONFIG.respstatus;
-			(*result)->dnssec_status = RESP_BUNDLE_LOCAL_CONFIG.dnssec_status;
-			(*result)->ipv4_count = 1;
-			(*result)->ipv6_count = 1;
-			(*result)->ipv4 = strdup(RESP_BUNDLE_LOCAL_CONFIG.ipv4);
-			(*result)->ipv6 = strdup(RESP_BUNDLE_LOCAL_CONFIG.ipv6);
-			(*result)->ttl = 0;
-			(*result)->cname = strdup(RESP_BUNDLE_LOCAL_CONFIG.cname);
-			return 0;
-		}
-		return -1;
-	}
-	DBusMessage* msg;
-	DBusConnection* conn;
+	DBusMessage *request, *reply;
+	DBusConnection *conn;
 	DBusError err;
-	DBusPendingCall* pending;
+	DBusPendingCall *pending;
 	int ret;
 	dbus_error_init(&err);
 	conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
@@ -63,20 +45,25 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	if (!dbus_bus_name_has_owner(conn, IPC_SERVICE_NAME, &err))
 	{
 		err_log("proxy_resolve< [%s] No such name on the bus! >", IPC_SERVICE_NAME);
-		return -1;
+		err_log("proxy_resolve< start_service_by_name([%s]) >", IPC_SERVICE_NAME);
+		dbus_uint32_t flags = 0, dbus_result;
+		if(!dbus_bus_start_service_by_name(conn, IPC_SERVICE_NAME, flags, &dbus_result, &err))
+		{
+			err_log("proxy_resolve< start_service_by_name FAILED: %s>", err.message);
+			return -1;
+		}
 	}
-	msg = dbus_message_new_method_call(IPC_SERVICE_NAME, IPC_OBJECT_PATH, IPC_IFACE, METHOD_GETDNS_RESOLVE);
-	if(NULL == msg)
+	request = dbus_message_new_method_call(IPC_SERVICE_NAME, IPC_OBJECT_PATH, IPC_IFACE, METHOD_GETDNS_RESOLVE);
+	if(NULL == request)
 	{ 
 	  	err_log("proxy_resolve< Query: %s: Method call failed (MESSAGE=NULL) >", query);
 	  	return -1;
 	}
-	dbus_message_set_auto_start(msg, true);
-	if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &query, DBUS_TYPE_INT32, &type, DBUS_TYPE_INT32, &af, DBUS_TYPE_INVALID)) 
+	if (!dbus_message_append_args(request, DBUS_TYPE_STRING, &query, DBUS_TYPE_INT32, &type, DBUS_TYPE_INT32, &af, DBUS_TYPE_INVALID)) 
 	{
 	  	return -1;
 	}
-	if (!dbus_connection_send_with_reply (conn, msg, &pending, -1)) //Default timeout is -1
+	if (!dbus_connection_send_with_reply (conn, request, &pending, -1)) //Default timeout is -1
 	{
 	  	return -1;
 	}
@@ -87,12 +74,12 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	}
 	dbus_connection_flush(conn);
 	/*free the message*/
-	dbus_message_unref(msg);
+	dbus_message_unref(request);
 	/*wait for reply*/
 	dbus_pending_call_block(pending);
 	/*Check the reply message*/
-	msg = dbus_pending_call_steal_reply(pending);
-	if (NULL == msg)
+	reply = dbus_pending_call_steal_reply(pending);
+	if (NULL == reply)
 	{
 		err_log("proxy_resolve< Null reply >"); 
 		dbus_pending_call_unref(pending);
@@ -105,10 +92,10 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	if(*result == NULL)
 	{
 		err_log("proxy_resolve< MALLOC failed >");
-		dbus_message_unref(msg);  
+		dbus_message_unref(reply);  
 		return ret;
 	}
-	if(!dbus_message_get_args(msg, &err, DBUS_TYPE_UINT32, &ret, DBUS_TYPE_UINT32, &((*result)->respstatus),
+	if(!dbus_message_get_args(reply, &err, DBUS_TYPE_UINT32, &ret, DBUS_TYPE_UINT32, &((*result)->respstatus),
 		DBUS_TYPE_UINT32, &((*result)->dnssec_status), DBUS_TYPE_UINT64, &((*result)->ttl),
 		DBUS_TYPE_UINT32, &((*result)->ipv4_count), DBUS_TYPE_UINT32, &((*result)->ipv6_count),
 		DBUS_TYPE_STRING, &((*result)->ipv4), DBUS_TYPE_STRING, &((*result)->ipv6),
@@ -122,7 +109,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 			(*result)->ipv6_count = 0;
 		}
 	}
-	dbus_message_unref(msg);  
+	dbus_message_unref(reply);  
 	return ret;
 }
 
@@ -141,7 +128,6 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 	getdns_dict *response = NULL;
 	response_bundle *addr_data = NULL;
 	dbus_error_init(&err);
-	err_log("handle_method_call< Handling message... >\n");
 	if(context == NULL || extensions == NULL)
 	{
 		load_context(&context, &extensions);
@@ -203,8 +189,8 @@ void ipc_dbus_listen()
 	DBusConnection* conn;
 	DBusError err;
 	int ret;
-	pid_t ipc_pid /*ID of the main IPC handler*/, http_pid /*The http child*/, sessid /*Session ID (We will fork from then exit parent.)*/;
-	ipc_pid = fork();
+	pid_t sessid /*Session ID (We will fork from then exit parent.)*/;
+	pid_t ipc_pid = fork();
 	/*Make sure fork succeeded*/
 	if(ipc_pid < 0)
 	{
@@ -264,36 +250,29 @@ void ipc_dbus_listen()
 	  err_log("ipc_dbus_listen< Could not own name (%s). Error: %d >", IPC_SERVICE_NAME, ret);
 	  exit(EXIT_FAILURE); 
 	}
-	/*http config listener*/
-	if((http_pid = fork()) == 0)
+	/*Listen for messages*/
+	while(true)
 	{
-		http_listen(HTTP_UNRPRIV_PORT);
-	}else{
-		/*Listen for messages*/
-		while(true)
-		{
-		  /*non blocking read for next message*/
-		  dbus_connection_read_write(conn, 0);
-		  msg = dbus_connection_pop_message(conn);
-		  if(msg != NULL)
-		  {
-		  		if(dbus_message_is_method_call(msg, IPC_IFACE, METHOD_GETDNS_RESOLVE))
-		  		{
-		  			handle_method_call(msg, conn);
-		  		}
-		  	dbus_message_unref(msg);
-		  }
-		}
-		/*close connection*/
-		dbus_connection_close(conn);
-		kill(http_pid, 9);
-		if(context != NULL)
-		{
-			getdns_context_destroy(context);
-		}
-		if(extensions != NULL)
-		{
-			getdns_dict_destroy(extensions);
-		}
+	  /*non blocking read for next message*/
+	  dbus_connection_read_write(conn, 0);
+	  msg = dbus_connection_pop_message(conn);
+	  if(msg != NULL)
+	  {
+	  		if(dbus_message_is_method_call(msg, IPC_IFACE, METHOD_GETDNS_RESOLVE))
+	  		{
+	  			handle_method_call(msg, conn);
+	  		}
+	  	dbus_message_unref(msg);
+	  }
+	}
+	/*close connection*/
+	dbus_connection_close(conn);
+	if(context != NULL)
+	{
+		getdns_context_destroy(context);
+	}
+	if(extensions != NULL)
+	{
+		getdns_dict_destroy(extensions);
 	}
 }

@@ -5,15 +5,7 @@
 #include "logger.h"
 #include "nss_getdns.h"
 #include "opt_parse.h"
-#include "browsers.h"
 
-#define  UNUSED_PARAM(x) ((void)(x))
-        
-struct context_holder
-{
-	getdns_context *ctx;
-	int pid;
-};
 /*
 *Create/load context.
 *The context should be reused per process.
@@ -28,8 +20,11 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 	/*
 	*Initialize library configuration from config file (getdns.conf)
 	*/
-	int options = 0;
-	parse_options(CONFIG_FILE, &options);
+	int options = get_local_defaults(CONFIG_FILE_LOCAL);
+	if(!options)
+	{	
+		parse_options(CONFIG_FILE, &options);
+	}
 	extensions = getdns_dict_create();
 	/*
 	Getdns extensions for doing both IPv4 and IPv6
@@ -67,26 +62,12 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext)
 
 int __nss_mod_init()
 {
-	/*
-	*Note: These local variables are wasted, just like that?!
-	*This function was build on an assumption that the context could be reused between multiple calls, but that may not be the case anymore.
-	*/
-	getdns_context *context = NULL;
-	getdns_dict *extensions = NULL;
-	return load_context(&context, &extensions) == GETDNS_RETURN_GOOD ? 0 : -1;
+	return 0;
 }
 
 void __nss_mod_destroy()
 {
-	/*
-	*Note: This function was build on an assumption that the context could be reused between multiple calls, but that may not be the case anymore.
-	*/
-	/*if(context != NULL)
-		getdns_context_destroy(context);
 	
-	if(extensions != NULL)
-		getdns_dict_destroy(extensions);
-	*/
 }  
   
 enum nss_status _nss_getdns_gethostbyaddr2_r (const void *addr, socklen_t len, int af,
@@ -99,7 +80,6 @@ enum nss_status _nss_getdns_gethostbyaddr2_r (const void *addr, socklen_t len, i
     return_code = getdns_gethostinfo(addr, af, &result_ptr, buffer, buflen, ttlp, NULL, &respstatus, &dnssec_status);
     getdns_process_statcode(return_code, respstatus, &status, errnop, h_errnop);
     debug_log("GETDNS: gethostbyaddr2_r: STATUS: %d (RESPSTATUS: %d; errnop: %d, h_errnop: %d)\n", status, respstatus, *errnop, *h_errnop);
-    UNUSED_PARAM(len);
     return status;
 }
 

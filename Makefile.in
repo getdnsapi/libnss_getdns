@@ -17,10 +17,10 @@ LIBS_PATH = @libdir@
 LIBNAME = getdns_shim-1.15.so
 LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
-OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
+OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O0 -fPIC -Wall
 LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
-LDLIBS = -lm -lgetdns -levent_core -lgetdns_ext_event -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
+LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
 
 build : $(OBJECTS)
 ifeq ($(USE_DBUS_PROXY), yes)
@@ -46,9 +46,13 @@ ifeq ($(USE_DBUS_PROXY), yes)
 	mkdir -p $(SERVICE_EXEC_DIR)
 	cp $(CONTEXT_DAEMON_EXEC) $(SERVICE_EXEC_DIR)/$(CONTEXT_DAEMON_EXEC)
 endif
+	cp data/error.html $(SERVICE_EXEC_DIR)/error.html
+	cp data/settings.html $(SERVICE_EXEC_DIR)/settings.html
 	cp data/getdns.conf /etc/getdns.conf
+	sh ./activate.sh
 	
 uninstall:
+	sh ./activate.sh --reverse
 	yes | rm -f $(LIB_ALIAS) $(LIB_PATH) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE) $(CONTEXT_DAEMON_EXEC)
 	ldconfig -v $(INSTALL_PATH)
 
@@ -56,7 +60,7 @@ obj :
 	$(CC) *.c $(CFLAGS)
 	
 clean :
-	rm -f *.o *.c~ *.h~ $(MODULE_NAME)
+	rm -f *.o *.c~ *.h~ services/*~ services/*.o contexts/*~ contexts/*.o $(MODULE_NAME) $(CONTEXT_DAEMON_EXEC)
 	$(MAKE) -C $(TEST_DIR) clean
 	
 .PHONY: clean test
