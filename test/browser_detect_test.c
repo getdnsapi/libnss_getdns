@@ -51,7 +51,7 @@ void test_options_file()
 
 void test_browsers(int af)
 {
-	char *names[8] = {"firefox", "opera", "wget", "ping", "ie", "curl", "mozilla", "chrome"}; 
+	char *names[11] = {"firefox", "opera", "wget", "ping", "ie", "curl", "mozilla", "chrome", "chromium", "chromium-browser", "google-chrome"}; 
 	size_t len = sizeof(names) / sizeof(names[0]);
 	int idx;
 	printf("Testing browser detection for address family %d:\n", af);

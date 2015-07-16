@@ -7,8 +7,8 @@ case $os in
 	REDIRECTION_RULE_UNSET=""
 	;;
 *Linux*)
-	REDIRECTION_RULE_SET="iptables -t nat -A OUTPUT -p tcp --dst getdns-config.localhost,getdns-errors.localhost --dport 80 -j REDIRECT --to-ports 8080"
-	REDIRECTION_RULE_UNSET="iptables -t nat -D OUTPUT -p tcp --dst getdns-config.localhost,getdns-errors.localhost --dport 80 -j REDIRECT --to-ports 8080"
+	REDIRECTION_RULE_SET="iptables -o lo -t nat -A OUTPUT -p tcp --dst getdns-config.localhost,getdns-errors.localhost --dport 80 -j REDIRECT --to-ports 8080"
+	REDIRECTION_RULE_UNSET="iptables -o lo -t nat -D OUTPUT -p tcp --dst getdns-config.localhost,getdns-errors.localhost --dport 80 -j REDIRECT --to-ports 8080"
 	;;
 esac
 if [ -n "$1" ]           

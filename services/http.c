@@ -149,60 +149,70 @@ enum service_type process_input(int fd, char **msg)
 void http_listen(int port)
 {
 
-  pid_t pid = fork();
-  if(pid > 0)
-  {
-  	exit(0);
-  }
-  umask(0);
-  setsid();
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-  int one = 1, client_fd;
-  struct sockaddr_in svr_addr, cli_addr;
-  socklen_t sin_len = sizeof(cli_addr);
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
-    err_log("Couln't open socket");
- 
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
-  svr_addr.sin_family = AF_INET;
-  svr_addr.sin_addr.s_addr = INADDR_ANY;
-  svr_addr.sin_port = htons(port);
- 
-  if (bind(sock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
+	pid_t pid = fork();
+	if(pid > 0)
+	{
+	exit(EXIT_SUCCESS);
+	}
+	umask(0);
+	setsid();
+	close(STDIN_FILENO);
+	close(STDOUT_FILENO);
+	close(STDERR_FILENO);
+	int reuse_addr = 1, client_fd;
+	struct sockaddr_in svr_addr, cli_addr;
+	socklen_t sin_len = sizeof(cli_addr);
+	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0)
+	{
+		err_log("Couln't open socket");
+		exit(EXIT_FAILURE);
+	}
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
+	svr_addr.sin_family = AF_INET;
+	svr_addr.sin_addr.s_addr = INADDR_ANY;
+	svr_addr.sin_port = htons(port);
+
+	if (bind(sock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
 		close(sock);
 		err_log("Couldn't bind");
 		perror("");
 		return;
-  }
- 
-  listen(sock, 5);
-  while (1) {
-    client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len); 
-    if (client_fd == -1)
-    {
-		err_log("Couldn't accept connection");
-		close(client_fd);
-		continue;
-    }
-    char *content = NULL, *header = NULL, *status_msg = NULL;
-    enum service_type srvc = process_input(client_fd, &status_msg);
-    load_page(srvc, &header, &content, status_msg != NULL ? status_msg : "");
-    if(content == NULL || header == NULL)
-    {
-    	err_log("Error reading file...");
-    	close(client_fd);
-    	continue;
-    }   
-    write(client_fd, header, strlen(header));
-    write(client_fd, content, strlen(content));
-    write(client_fd, "\r\n", strlen("\r\n"));
-    close(client_fd);
-    free(content);
-    free(header);
-  }
+	}
+	listen(sock, 10);
+	pid_t child_pid;
+	while (1) {
+		client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len); 
+		if (client_fd == -1)
+		{
+			err_log("Couldn't accept connection");
+			close(client_fd);
+			continue;
+		}
+		if(fork() == 0)
+		{
+			close(sock);
+			char *content = NULL, *header = NULL, *status_msg = NULL;
+			enum service_type srvc = process_input(client_fd, &status_msg);
+			load_page(srvc, &header, &content, status_msg != NULL ? status_msg : "");
+			if(content == NULL || header == NULL)
+			{
+				err_log("Error reading file...");
+				close(client_fd);
+				continue;
+			}   
+			write(client_fd, header, strlen(header));
+			write(client_fd, content, strlen(content));
+			write(client_fd, "\r\n", strlen("\r\n"));
+			close(client_fd);
+			free(content);
+			free(header);
+			exit(EXIT_SUCCESS);
+		}else{
+			close(client_fd);
+			continue;
+		}
+	}
 }
 
 int get_dnssec_info(char *query, char **status_msg)

@@ -8,7 +8,7 @@ struct query_hints
 };
 
 #define DESKTOP_APP_ENTRIES_DIR "/usr/share/applications"
-#define KNOWN_BROWSERS "wget, curl, firefox, chrome, chromium-browser, opera, epiphany, epiphany-browser, links2"
+#define KNOWN_BROWSERS "wget, curl, firefox, chrome, chromium-browser, chromium, google-chrome, opera, epiphany, epiphany-browser, links2"
 #define THRESHOLD 0.70
 
 int is_known_browser(struct query_hints *params);

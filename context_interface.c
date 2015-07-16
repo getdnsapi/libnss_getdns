@@ -48,7 +48,7 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 {
 	if(strlen(query) == 0)
 	{
-		err_log("Invalid argument: %s", query);
+		err_log("resolve_with_managed_ctx< Invalid argument: %s >", query);
 		return -1;
 	}
 	int ret = -1;
@@ -62,6 +62,7 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 	|| (*result != NULL && ((*result)->respstatus != GETDNS_RESPSTATUS_GOOD)
 		|| ((*result)->dnssec_status == GETDNS_DNSSEC_BOGUS)))
 	{
+		int preserve_respstatus = 0;
 		response_bundle *local_redirect = NULL;
 		if(strncmp(query, GETDNS_CONFIG_LOCALNAME, sizeof(GETDNS_CONFIG_LOCALNAME))==0
 			|| strncmp(query, GETDNS_CONFIG_IPV4+5, sizeof(GETDNS_CONFIG_IPV4)-5)==0
@@ -77,13 +78,8 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 				|| ((*result)->respstatus == GETDNS_RESPSTATUS_NO_SECURE_ANSWERS)))
 		{
 			if(browser_check(af)){
-				check_service();
-				(*result)->ipv4_count = 1;
-				(*result)->ipv6_count = 1;
-				(*result)->ipv4 = strdup(RESP_BUNDLE_LOCAL_ERR.ipv4);
-				(*result)->ipv6 = strdup(RESP_BUNDLE_LOCAL_ERR.ipv6);
-				(*result)->ttl = 0;
-				(*result)->cname = strdup(RESP_BUNDLE_LOCAL_ERR.cname);
+				preserve_respstatus = 1;
+				local_redirect = &RESP_BUNDLE_LOCAL_ERR;
 			}else{
 				local_redirect = &RESP_BUNDLE_EMPTY;
 			}
@@ -92,20 +88,18 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 		}
 		if(local_redirect){
 			check_service();
-			*result = malloc(sizeof(*local_redirect));
-			if(*result)
+			if(!preserve_respstatus)
 			{
 				(*result)->respstatus = local_redirect->respstatus;
 				(*result)->dnssec_status = local_redirect->dnssec_status;
-				(*result)->ipv4_count = 1;
-				(*result)->ipv6_count = 1;
-				(*result)->ipv4 = strdup(local_redirect->ipv4);
-				(*result)->ipv6 = strdup(local_redirect->ipv6);
-				(*result)->ttl = 0;
-				(*result)->cname = strdup(local_redirect->cname);
-				return 0;
 			}
-			return -1;
+			(*result)->ipv4_count = 1;
+			(*result)->ipv6_count = 1;
+			(*result)->ipv4 = strdup(local_redirect->ipv4);
+			(*result)->ipv6 = strdup(local_redirect->ipv6);
+			(*result)->ttl = 0;
+			(*result)->cname = strdup(local_redirect->cname);
+			return 0;
 		}
 	}
 	return ret;

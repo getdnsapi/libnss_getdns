@@ -39,7 +39,7 @@ getaddrinfo_test : getaddrinfo
 	./gai_test getdnsapi.net 4 1
 	./gai_test getdnsapi.net 6 1
 	./gai_test getdnsapi.net 7 1
-	./gai_test getdn-config.localhost 4 1
+	./gai_test getdns-config.localhost 4 1
 	./gai_test getdns-errors.localhost 4 1
 	./gai_test dnssec-failed.org 4 1
 	time ./gai_test getdnsapi.net 4 10

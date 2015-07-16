@@ -635,7 +635,6 @@ on gmadkat-OptiPlex-960
 config.status:836: creating Makefile
 config.status:836: creating test/Makefile
 config.status:836: creating config.h
-config.status:1011: config.h is unchanged
 
 ## ---------------- ##
 ## Cache variables. ##
