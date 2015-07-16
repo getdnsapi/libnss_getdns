@@ -180,7 +180,6 @@ void http_listen(int port)
 		return;
 	}
 	listen(sock, 10);
-	pid_t child_pid;
 	while (1) {
 		client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len); 
 		if (client_fd == -1)
@@ -255,27 +254,32 @@ int get_dnssec_info(char *query, char **status_msg)
 
 void check_service()
 {
-	char cmd[1024];
-	snprintf(cmd, sizeof(cmd), "fuser %d/tcp", HTTP_UNRPRIV_PORT);
-	FILE *f = popen(cmd, "r");
-	if(!f)
+	pid_t c_pid = fork();
+	if( c_pid == 0)
 	{
-		debug_log("http_d_listen< %s >", strerror(errno));
-	}else{
-		char buf[256];
-		if(fscanf(f, "%255[^\n]", buf) > 0)
+		umask(0);
+		setsid();
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+		char cmd[1024];
+		snprintf(cmd, sizeof(cmd), "fuser %d/tcp", HTTP_UNRPRIV_PORT);
+		FILE *f = popen(cmd, "r");
+		if(!f)
 		{
-			debug_log("http_d_listen< Port %d may still be in use: { %s }. >", HTTP_UNRPRIV_PORT, buf);
+			debug_log("http_d_listen< %s >", strerror(errno));
 		}else{
-			pid_t c_pid = fork();
-			if( c_pid == 0)
+			char buf[256];
+			if(fscanf(f, "%255[^\n]", buf) > 0)
 			{
-				http_listen(HTTP_UNRPRIV_PORT);
+				debug_log("http_d_listen< Port %d may still be in use: { %s }. >", HTTP_UNRPRIV_PORT, buf);
 			}else{
-				debug_log("http_d_listen< Restarted http service. >");
-				return;
+				http_listen(HTTP_UNRPRIV_PORT);
 			}
+			pclose(f);
 		}
-		pclose(f);
+	}else{
+		debug_log("http_d_listen< Restarted http service. >");
+		return;
 	}
 }
