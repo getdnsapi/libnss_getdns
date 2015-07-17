@@ -55,7 +55,7 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 	fp = fopen(fname, "rb");
 	if(!fp)
 	{
-		err_log("Unable to read template file <%s>", fname);
+		log_warning("Unable to read template file <%s>", fname);
 		return;
 	}
 	/*Get file length*/
@@ -159,13 +159,13 @@ void http_listen(int port)
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
-	int reuse_addr = 1, client_fd;
+	int reuse_addr = 0, client_fd;
 	struct sockaddr_in svr_addr, cli_addr;
 	socklen_t sin_len = sizeof(cli_addr);
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0)
 	{
-		err_log("Couln't open socket");
+		log_critical("http_listen< Couln't open socket >");
 		exit(EXIT_FAILURE);
 	}
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
@@ -175,7 +175,7 @@ void http_listen(int port)
 
 	if (bind(sock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
 		close(sock);
-		err_log("Couldn't bind");
+		log_warning("http_listen< Couldn't bind >");
 		perror("");
 		return;
 	}
@@ -184,7 +184,7 @@ void http_listen(int port)
 		client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len); 
 		if (client_fd == -1)
 		{
-			err_log("Couldn't accept connection");
+			log_warning("http_listen< Couldn't accept connection >");
 			close(client_fd);
 			continue;
 		}
@@ -196,7 +196,7 @@ void http_listen(int port)
 			load_page(srvc, &header, &content, status_msg != NULL ? status_msg : "");
 			if(content == NULL || header == NULL)
 			{
-				err_log("Error reading file...");
+				log_warning("http_listen< Error reading from client connection... >");
 				close(client_fd);
 				continue;
 			}   
@@ -267,19 +267,19 @@ void check_service()
 		FILE *f = popen(cmd, "r");
 		if(!f)
 		{
-			debug_log("http_d_listen< %s >", strerror(errno));
+			log_critical("http_d_listen< %s >", strerror(errno));
 		}else{
 			char buf[256];
 			if(fscanf(f, "%255[^\n]", buf) > 0)
 			{
-				debug_log("http_d_listen< Port %d may still be in use: { %s }. >", HTTP_UNRPRIV_PORT, buf);
+				log_info("http_d_listen< Port %d may still be in use: { %s }. >", HTTP_UNRPRIV_PORT, buf);
 			}else{
 				http_listen(HTTP_UNRPRIV_PORT);
 			}
 			pclose(f);
 		}
 	}else{
-		debug_log("http_d_listen< Restarted http service. >");
+		log_info("http_d_listen< Restarted http service. >");
 		return;
 	}
 }

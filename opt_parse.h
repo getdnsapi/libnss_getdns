@@ -48,4 +48,5 @@ void save_options(int options, char *options_file, int cur_user);
 int parse_keyval_options(char *data);
 char *print_options(int option_code);
 int get_local_defaults(char *label);
+void set_log_level(int options, int *ret);
 #endif

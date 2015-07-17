@@ -132,7 +132,7 @@ int __getdns_getaddrinfo(const char *hostname, const char *servname, const struc
 		protocol = hints->ai_protocol;
 		flags = hints->ai_flags;
 	}else{
-		err_log("getdns_mirror_getaddrinfo: BAD HINTS. Error: %d / %d / %d\n", err, hints->ai_socktype, SOCK_RAW);
+		log_warning("getdns_mirror_getaddrinfo: BAD HINTS. Error: %d / %d / %d\n", err, hints->ai_socktype, SOCK_RAW);
 		return eai2nss_code(err, status);
 	}
 	if ( (hostname == NULL && servname == NULL)
@@ -279,7 +279,7 @@ int __getdns_getaddrinfo(const char *hostname, const char *servname, const struc
 			return err;
 		}
 		*res = temp_ai;	
-		err_log("GETADDRINFO: STATUS: %d, ERR_CODE: %d\n", respstatus, eai2nss_code(0, status));
+		log_debug("GETADDRINFO: STATUS: %d, ERR_CODE: %d\n", respstatus, eai2nss_code(0, status));
 		return eai2nss_code(0, status);
 }
 

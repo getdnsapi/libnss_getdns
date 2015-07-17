@@ -29,20 +29,27 @@ AC_FUNC_ALLOCA
 AC_CHECK_FUNCS([memmove memset strchr strndup strtol])
 
 # Build with dbus-daemon for IPC
-USE_CTX_PROXY="no"
+CTX_PROXY=
 EXTRA_DEPS_INCLUDES=""
+EXTRA_LDLIBS=""
 CTX_PROXY_IMPL=""
 AC_ARG_WITH([context-proxy],
-  [--with-context-proxy	Configure the module to use a DBUS-facilitated context manager.],
-  [AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 
- 	[AC_DEFINE([HAVE_CONTEXT_PROXY], 1, [Use a managed getdns context via a context proxy]) USE_CTX_PROXY="yes" 
- 	EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" CTX_PROXY_IMPL="$(pwd)/contexts/*.c"], 
- 	AC_MSG_FAILURE([dbus not available on this system. Please install dbus before continuing.], 1),
- 	[]) 
-  ])
+  AS_HELP_STRING([--with-context-proxy=relative_path_to_dir],  [Configure with a context proxy implemented in the directory. (default: none).]), 
+  [withval="yes" CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"], [])
 
-AC_SUBST(use_dbus, $USE_CTX_PROXY)
-AC_SUBST(ctx_proxy_impl, $CTX_PROXY_IMPL)
+if test x_$CTX_PROXY = x_yes; then
+	CTX_PROXY=""
+	CTX_PROXY_IMPL=""
+else
+	AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], "$with_context_proxy", [Use a managed getdns context via a context proxy])
+fi
+if test x_$CTX_PROXY = x_dbus; then
+	AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 
+ 	[EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" EXTRA_LDLIBS="-ldbus-1"], 
+ 	AC_MSG_FAILURE([dbus not available on this system. Please install dbus before continuing.], 1),
+ 	[])
+fi
+
 
 # Specify build information
 PRELOAD_OPTION="no"
@@ -61,7 +68,11 @@ case $os in
 	MODULE_NAME=libnss_getdns.so.2
 	;;
 esac
-AC_SUBST(dbus_includes, $EXTRA_DEPS_INCLUDES)
+
+AC_SUBST(ctx_proxy, $CTX_PROXY)
+AC_SUBST(ctx_proxy_impl, $CTX_PROXY_IMPL)
+AC_SUBST(extra_ldlibs, $EXTRA_LDLIBS)
+AC_SUBST(extra_includes, $EXTRA_DEPS_INCLUDES)
 AC_SUBST(module_name, $MODULE_NAME)
 AC_SUBST(dbus_service_file, net.getdnsapi.StubResolver.service)
 AC_SUBST(dbus_interface_file, net.getdnsapi.StubResolver.xml)

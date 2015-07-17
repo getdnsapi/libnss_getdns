@@ -72,7 +72,7 @@ struct addr_param
 /*
 Retrieve system global getdns context and default extensions
 */
-getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext);
+getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *tm);
 
 getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *result_ptr, 
         char *intern_buffer, size_t buflen, int32_t *ttlp, char **canonp, uint32_t *respstatus, uint32_t *dnssec_status);

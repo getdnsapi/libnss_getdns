@@ -630,10 +630,11 @@ dbus_services_dir
 dbus_interface_file
 dbus_service_file
 module_name
-dbus_includes
-preload_on_install
+extra_includes
+extra_ldlibs
 ctx_proxy_impl
-use_dbus
+ctx_proxy
+preload_on_install
 ALLOCA
 EGREP
 GREP
@@ -1317,7 +1318,9 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
---with-context-proxy	Configure the module to use a DBUS-facilitated context manager.
+  --with-context-proxy=relative_path_to_dir
+                          Configure with a context proxy implemented in the
+                          directory. (default: none).
 
 Some influential environment variables:
   CC          C compiler command
@@ -3966,13 +3969,29 @@ done
 
 
 # Build with dbus-daemon for IPC
-USE_CTX_PROXY="no"
+CTX_PROXY=
 EXTRA_DEPS_INCLUDES=""
+EXTRA_LDLIBS=""
 CTX_PROXY_IMPL=""
 
 # Check whether --with-context-proxy was given.
 if test "${with_context_proxy+set}" = set; then :
-  withval=$with_context_proxy; { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dbus_message_set_auto_start in -ldbus-1" >&5
+  withval=$with_context_proxy; withval="yes" CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"
+fi
+
+
+if test x_$CTX_PROXY = x_yes; then
+	CTX_PROXY=""
+	CTX_PROXY_IMPL=""
+else
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_CONTEXT_PROXY "$with_context_proxy"
+_ACEOF
+
+fi
+if test x_$CTX_PROXY = x_dbus; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dbus_message_set_auto_start in -ldbus-1" >&5
 $as_echo_n "checking for dbus_message_set_auto_start in -ldbus-1... " >&6; }
 if ${ac_cv_lib_dbus_1_dbus_message_set_auto_start+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4009,10 +4028,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dbus_1_dbus_message_set_auto_start" >&5
 $as_echo "$ac_cv_lib_dbus_1_dbus_message_set_auto_start" >&6; }
 if test "x$ac_cv_lib_dbus_1_dbus_message_set_auto_start" = xyes; then :
-
-$as_echo "#define HAVE_CONTEXT_PROXY 1" >>confdefs.h
- USE_CTX_PROXY="yes"
- 	EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" CTX_PROXY_IMPL="$(pwd)/contexts/*.c"
+  EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" EXTRA_LDLIBS="-ldbus-1"
 else
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
@@ -4020,13 +4036,7 @@ as_fn_error 1 "dbus not available on this system. Please install dbus before con
 See \`config.log' for more details" "$LINENO" 5; }
 fi
 
-
 fi
-
-
-use_dbus=$USE_CTX_PROXY
-
-ctx_proxy_impl=$CTX_PROXY_IMPL
 
 
 # Specify build information
@@ -4051,7 +4061,14 @@ case $os in
 	MODULE_NAME=libnss_getdns.so.2
 	;;
 esac
-dbus_includes=$EXTRA_DEPS_INCLUDES
+
+ctx_proxy=$CTX_PROXY
+
+ctx_proxy_impl=$CTX_PROXY_IMPL
+
+extra_ldlibs=$EXTRA_LDLIBS
+
+extra_includes=$EXTRA_DEPS_INCLUDES
 
 module_name=$MODULE_NAME
 

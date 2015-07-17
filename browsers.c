@@ -61,7 +61,7 @@ int mime_lookup(char *entries_file, const char **types, int arr_len)
 		}
 		fclose(in);	
 	}else{
-		err_log("Could not open entries file %s (ERROR: %s)\n", entries_file, strerror(errno));
+		log_warning("Could not open entries file %s (ERROR: %s)\n", entries_file, strerror(errno));
 	}
 	return found;
 }
@@ -69,7 +69,7 @@ int mime_lookup(char *entries_file, const char **types, int arr_len)
 int is_known_browser(struct query_hints *params)
 {
 	if(!params)return 0;
-	err_log("Process %d/%d is %s", params->ppid, params->pid, params->name);
+	log_info("Process %d/%d is %s", params->ppid, params->pid, params->name);
 	params->score = 0;
 	float weights[3] = {0.5, 0.5, 0.5};
 	if(params->af == AF_UNSPEC)
@@ -108,6 +108,6 @@ int browser_check(int af)
 		prog_name = strrchr(prog_name, '/') + 1;
 	}
 	struct query_hints hints = {.pid=getpid(), .ppid=getppid(),.af=af, .name=prog_name};
-	debug_log("BROWSER? __progname: %s, p_i_n: %s, name: %s", __progname, program_invocation_name, prog_name);
+	log_debug("BROWSER? __progname: %s, p_i_n: %s, name: %s", __progname, program_invocation_name, prog_name);
 	return is_known_browser(&hints);
 }

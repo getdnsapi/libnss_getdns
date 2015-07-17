@@ -56,7 +56,7 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 	char *addr_string;
 	if(!response)
 	{
-		debug_log("extract_addrtuple():error parsing response.");
+		log_info("extract_addrtuple():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}
 	if((af == AF_INET6) || ((af == AF_UNSPEC) && (response->ipv6_count > 0)))
@@ -69,7 +69,7 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		addr_string = response->ipv4;
 		result->h_length = sizeof(struct in_addr);
 	}else{
-		debug_log("getdns_gethostinfo: Address family not supported: %d .", af);
+		log_warning("getdns_gethostinfo: Address family not supported: %d .", af);
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
         return GETDNS_RETURN_WRONG_TYPE_REQUESTED;
 	}
@@ -96,7 +96,7 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		size_t len = sizeof(tmp_name);
 		if(buflen < len)
 		{
-			debug_log("GETDNS: buffer too small.\n");
+			log_warning("GETDNS: buffer too small.\n");
 			return GETDNS_RETURN_MEMORY_ERROR;
 		}
 		memcpy(intern_buffer, tmp_name, len);        
@@ -128,7 +128,7 @@ getdns_return_t add_addrinfo(struct addrinfo **result_ptr, struct addrinfo *hint
 	ai = _allocaddrinfo(family); 
 	if(ai == NULL)
 	{
-		debug_log("Memory error (MALLOC).\n");
+		log_critical("Memory error (MALLOC).\n");
 		return GETDNS_RETURN_MEMORY_ERROR;
 	}
 	ai->ai_addr->sa_family = family;
@@ -139,7 +139,7 @@ getdns_return_t add_addrinfo(struct addrinfo **result_ptr, struct addrinfo *hint
 		ai->ai_canonname = strndup(canon_name, NI_MAXHOST);
 		if(ai->ai_canonname == NULL)
 		{
-			debug_log("Memory error (strndup).\n");
+			log_critical("Memory error (strndup).\n");
 			__freeaddrinfo(ai);
 			return GETDNS_RETURN_MEMORY_ERROR;
 		}    		
@@ -188,7 +188,7 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
 
 	if(!response)
 	{
-		debug_log("extract_addrinfo():error parsing response.");
+		log_info("extract_addrinfo():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}
 	if((response->ipv4_count + response->ipv6_count) < 1){
@@ -229,11 +229,11 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
 {
 	if(!response)
 	{
-		debug_log("extract_addrtuple():error parsing response.");
+		log_warning("extract_addrtuple():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}else if(response->ipv4_count + response->ipv6_count <= 0)
 	{
-		debug_log("extract_addrtuple(): No answers: %s.", getdns_get_errorstr_by_id(response->respstatus));
+		log_info("extract_addrtuple(): No answers: %s.", getdns_get_errorstr_by_id(response->respstatus));
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
 		return GETDNS_RETURN_GOOD;
 	}
@@ -245,7 +245,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     min_space = sizeof(canon_name) + (sizeof(struct gaih_addrtuple) * num_answers);
     if( buflen < min_space )
     {
-        debug_log("GETDNS: Buffer too small: %zd\n", buflen);
+        log_critical("GETDNS: Buffer too small: %zd\n", buflen);
         return GETDNS_RETURN_MEMORY_ERROR;
     }
     struct gaih_addrtuple *gaih_ptr = *result_addrtuple;
@@ -324,7 +324,7 @@ int resolve(const char *query, struct callback_fn_arg *userarg)
 		}
 		if(response == NULL)
 		{
-			err_log("resolve< NULL RESPONSE >");
+			log_warning("resolve< NULL RESPONSE >");
 			return GETDNS_RETURN_GENERIC_ERROR;
 		}else{
 			*dnssec_status = response->dnssec_status;
@@ -353,13 +353,13 @@ getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *
     getdns_return_t return_code; 
     if(!intern_buffer || buflen < sizeof(char) || (!result_ptr))
     {
-        debug_log("getdns_gethostinfo: Memory error...");
+        log_critical("getdns_gethostinfo: Memory error...");
         return GETDNS_RETURN_MEMORY_ERROR;
     }
     *respstatus = GETDNS_RESPSTATUS_NO_NAME;
     if( (af != AF_INET) && (af != AF_INET6) && (af != AF_UNSPEC) )
     {
-        debug_log("getdns_gethostinfo: Address family not supported: %d .", af);
+        log_warning("getdns_gethostinfo: Address family not supported: %d .", af);
         return GETDNS_RETURN_WRONG_TYPE_REQUESTED;
     }
     memset(intern_buffer, 0, buflen);
@@ -369,7 +369,7 @@ getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *
  	};
 	if((return_code = resolve(name, &arg)) != GETDNS_RETURN_GOOD)
 	{
-		debug_log("getdns_gethostinfo(<%s>): Failed parsing response: ERROR < %d >\n", name, return_code);
+		log_info("getdns_gethostinfo(<%s>): Failed parsing response: ERROR < %d >\n", name, return_code);
 	}
 	 /*
 	This section is not complete:
@@ -381,7 +381,7 @@ getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *
 	{
 		*canonp = result_ptr->addr_entry.p_hostent->h_name;
 	}
-	debug_log("Query(%s) => < %d > - DNSSEC STATUS: {%s}\n", name, *respstatus, getdns_get_errorstr_by_id(*dnssec_status));
+	log_debug("Query(%s) => < %d > - DNSSEC STATUS: {%s}\n", name, *respstatus, getdns_get_errorstr_by_id(*dnssec_status));
     return return_code;
 }
 

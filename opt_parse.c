@@ -10,6 +10,8 @@
 
 #define _GNU_SOURCE
 
+int log_level = LOG_LEVELS_CRITICAL;
+
 /*DNSSEC preferences*/
 const char* dnssec_atstrings[] = {DNSSEC_ATTR_VALIDATE, DNSSEC_ATTR_SECURE_ONLY};
 const int dnssec_atflags[] = {DNSSEC_VALIDATE, DNSSEC_SECURE_ONLY};
@@ -167,7 +169,7 @@ void parse_options(char *conf_file, int *ret)
 		}
 		fclose(in);	
 	}else{
-		err_log("Could not open config file %s (ERROR: %s)\n", conf_file, strerror(errno));
+		log_critical("Could not open config file %s (ERROR: %s)\n", conf_file, strerror(errno));
 	}
 }
 
@@ -207,7 +209,7 @@ void save_options(int option_code, char *options_file, int cur_user)
 		}
 		fclose(out);
 	}else{
-		err_log("Could not write to config file %s (ERROR: %s)\n", name, strerror(errno));
+		log_critical("Could not write to config file %s (ERROR: %s)\n", name, strerror(errno));
 	}
 	
 }
@@ -240,4 +242,20 @@ int get_local_defaults(char *label)
 	snprintf(name, 1024, "%s/%s/%s.conf", user_home_dir, ".getdns", label);
 	parse_options(name, &ret);
 	return ret;
+}
+
+void set_log_level(int options, int *level)
+{
+	if(options & DEBUG_VERBOSE)
+	{
+		*level = LOG_LEVELS_VERBOSE;
+	}else if(options & DEBUG_INFO)
+	{
+		*level = LOG_LEVELS_INFO;
+	}else if(options & DEBUG_WARNING)
+	{
+		*level = LOG_LEVELS_WARNING;
+	}else{
+		*level = LOG_LEVELS_CRITICAL;
+	}
 }

@@ -8,9 +8,10 @@ DEFS=@DEFS@
 CONTEXT_DAEMON_EXEC=getdns_daemon
 TEST_DIR=test
 PRELOAD_LIB = @preload_on_install@
-USE_DBUS_PROXY = @use_dbus@
+CTX_PROXY = @ctx_proxy@
 CTX_PROXY_IMPL = @ctx_proxy_impl@
-EXTRA_DEPS_INCLUDES = @dbus_includes@
+EXTRA_DEPS_INCLUDES = @extra_includes@
+EXTRA_LDLIBS = @extra_ldlibs@
 CC = @CC@
 INSTALL_PATH = @libdir@
 LIBS_PATH = @libdir@
@@ -20,10 +21,10 @@ LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O0 -fPIC -Wall
 LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
-LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl -ldbus-1
+LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
 
 build : $(OBJECTS)
-ifeq ($(USE_DBUS_PROXY), yes)
+ifneq ($(CTX_PROXY), )
 	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(MODULE_NAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDLIBS)
 else
@@ -40,7 +41,7 @@ install : build
 	cp $(MODULE_NAME) $(LIB_PATH)
 	ldconfig -v $(INSTALL_PATH)
 	ln -sf $(LIB_PATH) $(LIB_ALIAS)
-ifeq ($(USE_DBUS_PROXY), yes)
+ifeq ($(CTX_PROXY), dbus)
 	cp data/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE)
 	cp data/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE)
 	mkdir -p $(SERVICE_EXEC_DIR)

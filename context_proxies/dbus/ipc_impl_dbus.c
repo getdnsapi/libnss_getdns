@@ -8,16 +8,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/file.h>
-#include "../nss_getdns.h"
-#include "../logger.h"
-#include "../context_interface.h"
-#include "../query.h"
+#include "../../nss_getdns.h"
+#include "../../logger.h"
+#include "../../context_interface.h"
+#include "../../query.h"
 #include "ipc_interface.h"
-#include "../context_interface.h"
-#include "../config.h"
+#include "../../config.h"
 
 static getdns_context *context = NULL;
 static getdns_dict *extensions = NULL;
+static time_t last_changed = 0;
 
 /*
 Sends method call over bus.
@@ -34,7 +34,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	dbus_error_init(&err);
 	conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
 	if(dbus_error_is_set(&err)) { 
-		err_log("proxy_resolve< Connection Error: (%s) >", err.message); 
+		log_critical("proxy_resolve< Connection Error: (%s) >", err.message); 
 		dbus_error_free(&err);
 		return -1;
 	}
@@ -44,19 +44,19 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	}
 	if (!dbus_bus_name_has_owner(conn, IPC_SERVICE_NAME, &err))
 	{
-		err_log("proxy_resolve< [%s] No such name on the bus! >", IPC_SERVICE_NAME);
-		err_log("proxy_resolve< start_service_by_name([%s]) >", IPC_SERVICE_NAME);
+		log_warning("proxy_resolve< [%s] No such name on the bus! >", IPC_SERVICE_NAME);
+		log_info("proxy_resolve< start_service_by_name([%s]) >", IPC_SERVICE_NAME);
 		dbus_uint32_t flags = 0, dbus_result;
 		if(!dbus_bus_start_service_by_name(conn, IPC_SERVICE_NAME, flags, &dbus_result, &err))
 		{
-			err_log("proxy_resolve< start_service_by_name FAILED: %s>", err.message);
+			log_critical("proxy_resolve< start_service_by_name FAILED: %s>", err.message);
 			return -1;
 		}
 	}
 	request = dbus_message_new_method_call(IPC_SERVICE_NAME, IPC_OBJECT_PATH, IPC_IFACE, METHOD_GETDNS_RESOLVE);
 	if(NULL == request)
 	{ 
-	  	err_log("proxy_resolve< Query: %s: Method call failed (MESSAGE=NULL) >", query);
+	  	log_critical("proxy_resolve< Query: %s: Method call failed (MESSAGE=NULL) >", query);
 	  	return -1;
 	}
 	if (!dbus_message_append_args(request, DBUS_TYPE_STRING, &query, DBUS_TYPE_INT32, &type, DBUS_TYPE_INT32, &af, DBUS_TYPE_INVALID)) 
@@ -69,7 +69,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	}
 	if (NULL == pending) 
 	{ 
-	  	err_log("proxy_resolve< Pending Call = Null. Exiting. >"); 
+	  	log_warning("proxy_resolve< Pending Call = Null. Exiting. >"); 
 	  	return -1; 
 	}
 	dbus_connection_flush(conn);
@@ -81,7 +81,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	reply = dbus_pending_call_steal_reply(pending);
 	if (NULL == reply)
 	{
-		err_log("proxy_resolve< Null reply >"); 
+		log_warning("proxy_resolve< Null reply >"); 
 		dbus_pending_call_unref(pending);
 		return -1; 
 	}
@@ -91,7 +91,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	*result = malloc(sizeof(response_bundle));
 	if(*result == NULL)
 	{
-		err_log("proxy_resolve< MALLOC failed >");
+		log_critical("proxy_resolve< MALLOC failed >");
 		dbus_message_unref(reply);  
 		return ret;
 	}
@@ -101,7 +101,7 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 		DBUS_TYPE_STRING, &((*result)->ipv4), DBUS_TYPE_STRING, &((*result)->ipv6),
 		DBUS_TYPE_STRING, &((*result)->cname), DBUS_TYPE_INVALID))
 	{
-		err_log("proxy_resolve< Error reading message: %s >", err.message);
+		log_warning("proxy_resolve< Error reading message: %s >", err.message);
 		if(*result != NULL)
 		{
 			(*result)->respstatus = GETDNS_RETURN_GENERIC_ERROR;
@@ -113,8 +113,8 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 	return ret;
 }
 
-#if defined(HAVE_CONTEXT_PROXY) && HAVE_CONTEXT_PROXY == 1
-	getdns_context_proxy ctx_proxy = &ipc_dbus_proxy_resolve;
+#ifdef HAVE_CONTEXT_PROXY
+getdns_context_proxy ctx_proxy = &ipc_dbus_proxy_resolve;
 #endif
 
 void handle_method_call(DBusMessage* msg, DBusConnection* conn)
@@ -130,7 +130,7 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 	dbus_error_init(&err);
 	if(context == NULL || extensions == NULL)
 	{
-		load_context(&context, &extensions);
+		load_context(&context, &extensions, &last_changed);
 	}
 	if(context != NULL && extensions != NULL)
 	{
@@ -143,10 +143,10 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 			}
 			getdns_dict_destroy(response);
 		}else{
-			err_log("%s", err.message); 
+			log_warning("%s", err.message); 
 		}
 	}else{
-		err_log("Invalid context");
+		log_critical("Invalid context");
 	}
 	if(addr_data == NULL)
 	{
@@ -162,7 +162,7 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 		DBUS_TYPE_STRING, &(addr_data->ipv4), DBUS_TYPE_STRING, &(addr_data->ipv6),
 		DBUS_TYPE_STRING, &(addr_data->cname), DBUS_TYPE_INVALID))
 	{
-		err_log("handle_method_call< Error appending arguments. >");
+		log_critical("handle_method_call< Error appending arguments. >");
 	}else if(addr_data && addr_data != &RESP_BUNDLE_EMPTY)
 	{
 		free(addr_data->ipv4);
@@ -172,7 +172,7 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 	/*send reply && flush connection*/
 	if (!dbus_connection_send(conn, reply, &serial))
 	{
-	  err_log("handle_method_call< Error sending reply. >"); 
+	  log_warning("handle_method_call< Error sending reply. >"); 
 	  exit(EXIT_FAILURE);
 	}
 	dbus_connection_flush(conn);
@@ -194,13 +194,13 @@ void ipc_dbus_listen()
 	/*Make sure fork succeeded*/
 	if(ipc_pid < 0)
 	{
-		err_log("ipc_dbus_listen< Error forking. >");
+		log_critical("ipc_dbus_listen< Error forking. >");
 		exit(EXIT_FAILURE);
 	}
 	/*Exit parent process*/
 	if(ipc_pid > 0)
 	{
-		debug_log("ipc_dbus_listen< Entering daemon mode. >");
+		log_info("ipc_dbus_listen< Entering daemon mode. >");
 		exit(EXIT_SUCCESS);
 	}
 	/*
@@ -212,12 +212,12 @@ void ipc_dbus_listen()
 	sessid = setsid();
 	if(sessid < 0)
 	{
-		err_log("ipc_dbus_listen< setsid() failed >");
+		log_critical("ipc_dbus_listen< setsid() failed >");
 		exit(EXIT_FAILURE);
 	}
 	if( (chdir("/")) < 0)
 	{
-		err_log("ipc_dbus_listen< chdir() failed >");
+		log_critical("ipc_dbus_listen< chdir() failed >");
 		exit(EXIT_FAILURE);
 	}
 	close(STDIN_FILENO);
@@ -230,24 +230,24 @@ void ipc_dbus_listen()
 	conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
 	if (dbus_error_is_set(&err))
 	{ 
-	  err_log("ipc_dbus_listen< Connection Error (%s) >", err.message); 
+	  log_warning("ipc_dbus_listen< Connection Error (%s) >", err.message); 
 	  dbus_error_free(&err); 
 	}
 	if (NULL == conn)
 	{
-	  err_log("ipc_dbus_listen< Connection failed. >"); 
+	  log_critical("ipc_dbus_listen< Connection failed. >"); 
 	  exit(EXIT_FAILURE); 
 	}
 	/*Register name on the bus*/
 	ret = dbus_bus_request_name(conn, IPC_SERVICE_NAME, DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
 	if (dbus_error_is_set(&err))
 	{ 
-	  err_log("ipc_dbus_listen< Name Error (%s) >", err.message); 
+	  log_critical("ipc_dbus_listen< Name Error (%s) >", err.message); 
 	  dbus_error_free(&err);
 	}
 	if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret)
 	{ 
-	  err_log("ipc_dbus_listen< Could not own name (%s). Error: %d >", IPC_SERVICE_NAME, ret);
+	  log_critical("ipc_dbus_listen< Could not own name (%s). Error: %d >", IPC_SERVICE_NAME, ret);
 	  exit(EXIT_FAILURE); 
 	}
 	/*Listen for messages*/

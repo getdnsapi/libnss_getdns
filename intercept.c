@@ -4,7 +4,6 @@
 #include <netdb.h>
 #include <stdlib.h>
 #include <dlfcn.h>
-#include "logger.h"
 
 extern int getdns_mirror_getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,	struct addrinfo **res);
 extern void __freeaddrinfo(struct addrinfo *ai);

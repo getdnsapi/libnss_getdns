@@ -90,7 +90,7 @@ int __bsdnss_gethostbyname(void *rval,void *cb_data,va_list ap)
   }else{
   	*((struct hostent **)rval) = NULL;
   }
-  err_log("BSDNSS_GETHOSTBYNAME_r(%s): %d.\n", name, status);
+  log_debug("BSDNSS_GETHOSTBYNAME_r(%s): %d.\n", name, status);
   return status;
 }
 
@@ -118,7 +118,7 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   }else{
   	*((struct hostent**)rval) = NULL;
   }
-  err_log("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
+  log_debug("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
   return status;
 }
 
@@ -149,7 +149,7 @@ int __bsdnss_gethostbyaddr(void *rval, void *cb_data, va_list ap)
     *((struct hostent **)rval) = ret;
     *result = ret;
   }
-  err_log("BSDNSS_GETHOSTBYADDR_r: %d.\n", status);
+  log_debug("BSDNSS_GETHOSTBYADDR_r: %d.\n", status);
   return status;
 }
 
@@ -180,7 +180,7 @@ int __bsdnss_gethostbyaddr2(void *rval, void *cb_data, va_list ap)
     *((struct hostent **)rval) = ret;
     *result = ret;
   }
-  err_log("BSDNSS_GETHOSTBYADDR2_r: %d.\n", status);
+  log_debug("BSDNSS_GETHOSTBYADDR2_r: %d.\n", status);
   return status;
 }
 
@@ -204,13 +204,13 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
   }else{
     rval = NULL;
   }
-  err_log("BSDNSS: getaddrinfo(%s): %d\n", hostname, status);
+  log_debug("BSDNSS: getaddrinfo(%s): %d\n", hostname, status);
   return status;
 }
 
 int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
 {
-  err_log("BSDNSS: getnameinfo()");
+  log_info("BSDNSS: getnameinfo()");
   const struct sockaddr *sa;
   socklen_t salen;
   char *host, *serv;
@@ -234,7 +234,7 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
     host = NULL;
     serv = NULL;
   }
-  err_log("BSDNSS: getnameinfo(HOST:%s, SERV:%s): %d\n", host, serv, status);
+  log_debug("BSDNSS: getnameinfo(HOST:%s, SERV:%s): %d\n", host, serv, status);
   return status;
 }
 
