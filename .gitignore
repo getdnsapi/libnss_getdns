@@ -1,3 +1,9 @@
+#Makefiles and temp files
+Makefile*
+*~
+*.cache
+*.status
+
 # Object files
 *.o
 *.ko
