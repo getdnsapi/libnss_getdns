@@ -35,14 +35,9 @@ EXTRA_LDLIBS=""
 CTX_PROXY_IMPL=""
 AC_ARG_WITH([context-proxy],
   AS_HELP_STRING([--with-context-proxy=relative_path_to_dir],  [Configure with a context proxy implemented in the directory. (default: none).]), 
-  [withval="yes" CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"], [])
+  [withval="yes" AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], "$with_context_proxy", [Use a managed getdns context via a context proxy]) 
+  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"], [])
 
-if test x_$CTX_PROXY = x_yes; then
-	CTX_PROXY=""
-	CTX_PROXY_IMPL=""
-else
-	AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], "$with_context_proxy", [Use a managed getdns context via a context proxy])
-fi
 if test x_$CTX_PROXY = x_dbus; then
 	AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 
  	[EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" EXTRA_LDLIBS="-ldbus-1"], 

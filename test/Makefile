@@ -1,9 +1,9 @@
 CC = gcc
-CTX_PROXY = unix
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/context_proxies/unix/*.c
+CTX_PROXY = 
+CTX_PROXY_IMPL = 
 EXTRA_DEPS_INCLUDES = 
 EXTRA_LDLIBS = 
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/context_proxies/unix/*.c
+CTX_PROXY_IMPL = 
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
 
