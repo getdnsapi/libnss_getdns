@@ -121,11 +121,8 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 {
 	DBusMessage* reply;
 	DBusError err;
-	char *query;
-	int reverse, af;
 	dbus_uint32_t success = 0;
 	dbus_uint32_t serial = 0;
-	getdns_dict *response = NULL;
 	response_bundle *addr_data = NULL;
 	dbus_error_init(&err);
 	if(context == NULL || extensions == NULL)
@@ -134,14 +131,10 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 	}
 	if(context != NULL && extensions != NULL)
 	{
-		if (dbus_message_get_args(msg, &err, DBUS_TYPE_STRING, &query, DBUS_TYPE_INT32, &reverse, DBUS_TYPE_INT32, &af, DBUS_TYPE_INVALID))
+		req_params req;
+		if (dbus_message_get_args(msg, &err, DBUS_TYPE_STRING, &(req.query), DBUS_TYPE_INT32, &(req.reverse), DBUS_TYPE_INT32, &(req.af), DBUS_TYPE_INVALID))
 		{
-			do_query(query, af, reverse, context, extensions, &response);
-			if(response)
-			{
-				parse_addr_bundle(response, &addr_data, reverse, af);
-			}
-			getdns_dict_destroy(response);
+			do_query(context, extensions, &req, &addr_data);
 		}else{
 			log_warning("%s", err.message); 
 		}
@@ -165,8 +158,6 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 		log_critical("handle_method_call< Error appending arguments. >");
 	}else if(addr_data && addr_data != &RESP_BUNDLE_EMPTY)
 	{
-		free(addr_data->ipv4);
-		free(addr_data->ipv6);
 		free(addr_data);
 	}
 	/*send reply && flush connection*/

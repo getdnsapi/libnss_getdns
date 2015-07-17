@@ -33,7 +33,7 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 		if(stat(CONFIG_FILE_LOCAL, &st) != 0)
 		{
 			log_warning("load_context< %s >", strerror(errno));
-		}else if(difftime(st.st_mtime, *last_check) > 0){
+		}else if(difftime(*last_check, st.st_mtime) > 0){
 			log_info("load_context< loading new settings from %s >", CONFIG_FILE_LOCAL);
 			*last_check = st.st_mtime;
 			config_update = 1;

@@ -12,7 +12,7 @@
 #include "../../logger.h"
 #include "ipc_impl_unix.h"
 
-#define MAXBUFSIZ 4096
+#define MAXBUFSIZ sizeof(response_bundle)
 #define ADDRESS "/var/tmp/getdns_module_unix.sock"
 #define BACKLOG_SIZE 64
 
@@ -57,28 +57,26 @@ void ipc_unix_listen()
 		{
 			char buf[MAXBUFSIZ];
 			size_t len;
-			getdns_dict *response = NULL;
 			response_bundle *reply = NULL;
 			if( (len = read(clientfd, buf, MAXBUFSIZ)) > 0)
 			{
 				req_params req;
+				memset(&req, 0, sizeof(req));
 				memcpy(&req, buf, len);
-				log_debug("ipc_unix_listen< Query=>'%s'; Reverse?=>%d, AF=>%d >", req.query, req.reverse, req.af);
-				do_query(req.query, req.af, req.reverse, context, extensions, &response);
-				if(response)
+				getdns_return_t ret = do_query(context, extensions, &req, &reply);
+				if( (ret != GETDNS_RETURN_GOOD) || (reply == NULL) )
 				{
-					parse_addr_bundle(response, &reply, req.reverse, req.af);
+					log_warning("ipc_unix_listen< RESPONSE_BUNDLE is null >");
+					reply = &RESP_BUNDLE_EMPTY;
 				}
-				getdns_dict_destroy(response);
-				flat_response_bundle answer = {.dnssec_status=reply->dnssec_status, .respstatus=reply->respstatus, 
-					.ipv4_count=reply->ipv4_count, .ttl=reply->ttl};
-				strncpy(answer.ipv4, reply->ipv4, strlen(reply->ipv4));
-				strncpy(answer.ipv6, reply->ipv6, strlen(reply->ipv6));
-				strncpy(answer.cname, reply->cname, strlen(reply->cname));
-				len = sizeof(flat_response_bundle);
-				if(write(clientfd, &answer, len) <= len)
+				len = sizeof(response_bundle);
+				if(write(clientfd, reply, len) <= len)
 				{
 					log_warning("ipc_unix_listen< write: %s >", strerror(errno));
+				}
+				if(reply && reply != &RESP_BUNDLE_EMPTY)
+				{
+					free(reply);
 				}
 			}			
 		}else{
@@ -121,7 +119,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
     }
     req_params request = {.reverse=type, .af=af};
     memset(request.query, 0, sizeof(request.query));
-    strncpy(request.query, query, strlen(query));
+    memcpy(request.query, query, strlen(query));
     if(send(sockfd, &request, sizeof(req_params), 0) <= 0)
     {
     	log_warning("ipc_unix_proxy_resolve< send: %s >", strerror(errno));
@@ -134,22 +132,14 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
     	log_warning("ipc_unix_proxy_resolve< recv: %s >", strerror(errno));
         return -1;
     }
-    flat_response_bundle answer;
-    memcpy(&answer, buf, len);
     *result = malloc(sizeof(response_bundle));
 	if(*result == NULL)
 	{
 		log_critical("ipc_unix_proxy_resolve< MALLOC failed >");
 		return -1;
 	}
-	(*result)->dnssec_status = answer.dnssec_status;
-	(*result)->respstatus = answer.respstatus;
-	(*result)->cname = answer.cname;
-	(*result)->ttl = answer.ttl;
-	(*result)->ipv4_count = answer.ipv4_count;
-	(*result)->ipv6_count = answer.ipv6_count;
-	(*result)->ipv4 = answer.ipv4;
-	(*result)->ipv6 = answer.ipv6;
+	memset(*result, 0, sizeof(response_bundle));
+    memcpy(*result, buf, len);
     close(sockfd);
     return 0;
 }

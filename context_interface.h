@@ -20,27 +20,12 @@ typedef struct response_addr_bundle
 	uint32_t respstatus;
 	uint32_t dnssec_status;
 	long ttl;
-	char *cname;
-	uint32_t ipv4_count; /*Number of IPv4 addresses*/
-	uint32_t ipv6_count; /*Number of IPv6 addresses*/
-	char *ipv4; /*comma-separated list of IPv4 addresses*/
-	char *ipv6; /*comma-separated list of IPv6 addresses*/
-} response_bundle;
-
-/*
-This structure holds a FLAT bundle of addresses for a domain name resolution answer.
-*/
-typedef struct flat_response_addr_bundle
-{
-	uint32_t respstatus;
-	uint32_t dnssec_status;
-	long ttl;
 	char cname[NI_MAXHOST];
 	uint32_t ipv4_count; /*Number of IPv4 addresses*/
 	uint32_t ipv6_count; /*Number of IPv6 addresses*/
-	char ipv4[NI_MAXHOST*MAX_NUM_ANSWERS]; /*comma-separated list of IPv4 addresses*/
-	char ipv6[NI_MAXHOST*MAX_NUM_ANSWERS]; /*comma-separated list of IPv6 addresses*/
-} flat_response_bundle;
+	char ipv4[(1+NI_MAXHOST)*MAX_NUM_ANSWERS]; /*comma-separated list of IPv4 addresses*/
+	char ipv6[(1+NI_MAXHOST)*MAX_NUM_ANSWERS]; /*comma-separated list of IPv6 addresses*/
+} response_bundle;
 
 /*
 Request holder.

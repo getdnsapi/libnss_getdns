@@ -83,7 +83,7 @@ static uint32_t getdnssec_status(getdns_dict *response)
 	return ret;
 }
 
-int do_query(const char *query, int af, int reverse, getdns_context *context, getdns_dict *extensions, getdns_dict **response)
+static getdns_return_t getdns_query(const char *query, int af, int reverse, getdns_context *context, getdns_dict *extensions, getdns_dict **response)
 {
 	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
 	/*
@@ -110,7 +110,7 @@ int do_query(const char *query, int af, int reverse, getdns_context *context, ge
     return return_code;
 }
 
-getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter, response_bundle **ret)
+static getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter, response_bundle **ret)
 {
 	uint32_t respstatus;
 	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
@@ -119,11 +119,7 @@ getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter, respon
 	size_t num_addresses, rec_count;
 	return_code = getdns_list_get_length(just_the_addresses_ptr, &num_addresses);
 	*ret = malloc(sizeof(response_bundle));
-	size_t ipv4_len = 5 + (num_addresses *  (1+INET_ADDRSTRLEN)),
-		ipv6_len = 5 + (num_addresses *  (1+INET6_ADDRSTRLEN));
-	char *ipv4 = malloc(ipv4_len);
-	char *ipv6 = malloc(ipv6_len);
-	if(!(*ret) || !ipv4 || !ipv6)
+	if(!(*ret))
 	{
 		log_critical("parse_addr_bundle< Malloc failed. >");
 		return GETDNS_RETURN_MEMORY_ERROR;
@@ -136,20 +132,22 @@ getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter, respon
 		log_warning("Error: %d", return_code);
 		return return_code;
 	}
-	memset(ipv4, 0, ipv4_len);
-	memset(ipv6, 0, ipv6_len);
+	memset(*ret, 0, sizeof(response_bundle));
 	(*ret)->respstatus = respstatus;
 	(*ret)->dnssec_status = getdnssec_status(response);
 	(*ret)->ipv4_count = 0;
 	(*ret)->ipv6_count = 0;
-	(*ret)->ipv4 = ipv4;
-	(*ret)->ipv6 = ipv6;
 	(*ret)->ttl = 0;
-	(*ret)->cname = extract_cname(response, "canonical_name");
+	char *cname = extract_cname(response, "canonical_name");
+	if(cname != NULL)
+	{
+		strncpy((*ret)->cname, cname, strlen(cname)); 
+		free(cname);
+	}
 	memcpy((*ret)->ipv4, "ipv4:", 5);
 	memcpy((*ret)->ipv6, "ipv6:", 5);
-	char *ipv4_ptr = (*ret)->ipv4 + 5;
-	char *ipv6_ptr = (*ret)->ipv6 + 5;
+	char *ipv4_ptr = &((*ret)->ipv4[5]);
+	char *ipv6_ptr = &((*ret)->ipv6[5]);
 	for ( rec_count = 0; rec_count < num_addresses; ++rec_count )
 	{
 		getdns_dict *address;
@@ -177,7 +175,7 @@ getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter, respon
 	return return_code;
 }
 
-getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  response_bundle **ret)
+static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  response_bundle **ret)
 {
 	uint32_t respstatus;
 	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
@@ -186,11 +184,7 @@ getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  res
 	size_t num_replies, num_answers, reply_idx, answer_idx,  answer_count=0;;
 	return_code = getdns_list_get_length(replies_tree, &num_replies);
 	*ret = malloc(sizeof(response_bundle));
-	size_t ipv4_len = 5 + (num_replies * MAX_NUM_ANSWERS* (1+NI_MAXHOST)),
-		ipv6_len = 5 + (num_replies * MAX_NUM_ANSWERS* (1+NI_MAXHOST));
-	char *ipv4 = malloc(ipv4_len);
-	char *ipv6 = malloc(ipv6_len);
-	if(!(*ret) || !ipv4 || !ipv6)
+	if(!(*ret))
 	{
 		log_critical("parse_nameaddr_bundle< Malloc failed. >");
 		return GETDNS_RETURN_MEMORY_ERROR;
@@ -203,16 +197,12 @@ getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  res
 		log_warning("Error: %d", return_code);
 		return return_code;
 	}
-	memset(ipv4, 0, ipv4_len);
-	memset(ipv6, 0, ipv6_len);
+	memset(*ret, 0, sizeof(response_bundle));
 	(*ret)->respstatus = respstatus;
 	(*ret)->dnssec_status = getdnssec_status(response);
 	(*ret)->ipv4_count = 0;
 	(*ret)->ipv6_count = 0;
-	(*ret)->ipv4 = ipv4;
-	(*ret)->ipv6 = ipv6;
 	(*ret)->ttl = 0;
-	(*ret)->cname = extract_cname(response, "canonical_name");
 	memcpy((*ret)->ipv4, "ipv4:", 5);
 	memcpy((*ret)->ipv6, "ipv6:", 5);
 	char *dname_ptr = (*ret)->ipv4 + 5;
@@ -236,7 +226,12 @@ getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  res
 				{
 					getdns_dict *data;
 					ASSERT_OR_RETURN(getdns_dict_get_dict(rr, "rdata", &data));
-					(*ret)->cname = extract_cname(data, "ptrdname");
+					char *cname = extract_cname(data, "ptrdname");
+					if(cname)
+					{
+						strncpy((*ret)->cname, cname, strlen(cname));
+						free(cname);
+					}
 					getdns_bindata *dname;
 					ASSERT_OR_RETURN(getdns_dict_get_bindata(data, "rdata_raw", &dname));
 					char *dname_str;
@@ -261,13 +256,11 @@ getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  res
 	memset(dname6_ptr-1, 0, 1);
 	return return_code;
 	clean_and_return:
-		free(ipv4);
-		free(ipv6);
 		free(*ret);
 		return return_code;
 }
 
-getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, int reverse, int af)
+static getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, int reverse, int af)
 {
 	if(reverse)
 	{
@@ -275,4 +268,18 @@ getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, 
 	}else{
 		return parse_ipaddr_bundle(response, af, ret);
 	}
+}
+
+getdns_return_t do_query(getdns_context *context, getdns_dict *extensions, req_params *request, response_bundle **ret)
+{
+	getdns_dict *response = NULL;
+	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
+	if(getdns_query(request->query, request->af, request->reverse, context, extensions, &response) == GETDNS_RETURN_GOOD)
+	{
+		return_code = parse_addr_bundle(response, ret, request->reverse, request->af);
+		//getdns_dict_destroy(response);
+	}else{
+		log_warning("do_query< NULL RESPONSE >");
+	}
+	return return_code;	
 }

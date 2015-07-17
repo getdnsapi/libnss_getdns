@@ -15,13 +15,12 @@ int resolve_with_new_ctx(char *query, int reverse, int af, response_bundle **res
 	getdns_dict *extensions = NULL;
 	if(load_context(&context, &extensions, NULL) == GETDNS_RETURN_GOOD)
 	{
-		getdns_dict *response = NULL;
-		do_query(query, af, reverse, context, extensions, &response);
-		if(response)
+		req_params req = {.af=af, .reverse=reverse};
+		memset(req.query, 0, sizeof(req.query));
+		strncpy(req.query, query, strlen(query));
+		do_query(context, extensions, &req, result);
+		if(*result == NULL)
 		{
-			parse_addr_bundle(response, result, reverse, af);
-			getdns_dict_destroy(response);
-		}else{
 			log_warning("resolve_with_new_ctx < NULL RESPONSE >");
 		}
 		getdns_context_destroy(context);
@@ -52,12 +51,7 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 		return -1;
 	}
 	int ret = -1;
-	if(getgid() == 0 || getuid() == 0)
-	{
-		ret = resolve_with_new_ctx(query, is_reverse, af, result);
-	}else{
-		ret = ctx_proxy(query, is_reverse, af, result);
-	}
+	ret = ctx_proxy(query, is_reverse, af, result);
 	if((ret == -1) 
 	|| (*result != NULL && (((*result)->respstatus != GETDNS_RESPSTATUS_GOOD)
 		|| ((*result)->dnssec_status == GETDNS_DNSSEC_BOGUS))))
@@ -86,7 +80,8 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 		}else{
 			return ret;
 		}
-		if(local_redirect){
+		if(local_redirect)
+		{
 			check_service();
 			if(!preserve_respstatus)
 			{
@@ -95,10 +90,13 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 			}
 			(*result)->ipv4_count = 1;
 			(*result)->ipv6_count = 1;
-			(*result)->ipv4 = strdup(local_redirect->ipv4);
-			(*result)->ipv6 = strdup(local_redirect->ipv6);
+			memset((*result)->ipv4, 0, sizeof((*result)->ipv4));
+			memset((*result)->ipv6, 0, sizeof((*result)->ipv6));
+			memset((*result)->cname, 0, sizeof((*result)->cname));
+			strncpy((*result)->ipv4, local_redirect->ipv4, strlen(local_redirect->ipv4));
+			strncpy((*result)->ipv6, local_redirect->ipv6, strlen(local_redirect->ipv6));
 			(*result)->ttl = 0;
-			(*result)->cname = strdup(local_redirect->cname);
+			strncpy((*result)->cname, local_redirect->cname, strlen(local_redirect->cname));
 			return 0;
 		}
 	}

@@ -3976,15 +3976,20 @@ CTX_PROXY_IMPL=""
 
 # Check whether --with-context-proxy was given.
 if test "${with_context_proxy+set}" = set; then :
-  withval=$with_context_proxy; withval="yes"
+  withval=$with_context_proxy; withval="yes" CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"
+fi
+
+
+if test x_$CTX_PROXY = x_yes; then
+	CTX_PROXY=""
+	CTX_PROXY_IMPL=""
+elif test x_$CTX_PROXY != x_; then
+
 cat >>confdefs.h <<_ACEOF
 #define HAVE_CONTEXT_PROXY "$with_context_proxy"
 _ACEOF
 
-  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"
 fi
-
-
 if test x_$CTX_PROXY = x_dbus; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dbus_message_set_auto_start in -ldbus-1" >&5
 $as_echo_n "checking for dbus_message_set_auto_start in -ldbus-1... " >&6; }
