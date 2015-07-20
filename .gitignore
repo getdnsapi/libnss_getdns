@@ -1,5 +1,9 @@
 #Makefiles and temp files
 Makefile*
+<<<<<<< HEAD
+=======
+test/Makefile*
+>>>>>>> 09cc4f5693682d44909a35f111cefbed9921c052
 *~
 *.cache
 *.status
@@ -36,4 +40,7 @@ Makefile*
 
 # Debug files
 *.dSYM/
+<<<<<<< HEAD
 
+=======
+>>>>>>> 09cc4f5693682d44909a35f111cefbed9921c052
