@@ -44,7 +44,7 @@ int main(int argc , char *argv[])
     struct hostent *he = NULL;
     printf("\n================\n");
     t = clock();
-    if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getdns_mirror_getaddrinfo, &getdns_mirror_freeaddrinfo)) 
+    if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) 
     	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) ))
     {
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
@@ -56,7 +56,7 @@ int main(int argc , char *argv[])
 		inet_pton(ret2_af, ip_2, addr_data_ptr(&sa2));
 		char errbuf[2048];
 		int flags = NI_NAMEREQD;
-		ret1 = getdns_mirror_getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
+		ret1 = getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
 		if(ret1==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_1, hostname, rev_ip_1);
 		else{

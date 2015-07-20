@@ -1,9 +1,9 @@
 CC = gcc
-CTX_PROXY = unix
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc_imp/context_proxies/unix/*.c
+CTX_PROXY = 
+CTX_PROXY_IMPL = 
 EXTRA_DEPS_INCLUDES = 
 EXTRA_LDLIBS = 
-CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc_imp/context_proxies/unix/*.c
+CTX_PROXY_IMPL = 
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
 
@@ -44,9 +44,10 @@ getaddrinfo_test : getaddrinfo
 	./gai_test getdnsapi.net 6 1
 	./gai_test getdnsapi.net 7 1
 	./gai_test dnssec-failed.org 4 1
-	time ./gai_test getdnsapi.net 4 10
-	time ./gai_test getdnsapi.net 4 100
-	time ./gai_test getdnsapi.net 4 1000
+	time ./gai_test smartrwanda.net 4 10
+	time ./gai_test smartrwanda.net 4 100
+	time ./gai_test smartrwanda.net 4 1000
+	time ./gai_test smartrwanda.net 4 10000
 
 	
 clean :

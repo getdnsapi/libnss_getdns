@@ -95,11 +95,17 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 		dbus_message_unref(reply);  
 		return ret;
 	}
+	/*
+	*DBUS_TYPE_STRING requires utf-8 strings, but our response_bundle uses char[].
+	*/
+	char *cname = NULL;
+	char *ipv4 = NULL;
+	char *ipv6 = NULL;
 	if(!dbus_message_get_args(reply, &err, DBUS_TYPE_UINT32, &ret, DBUS_TYPE_UINT32, &((*result)->respstatus),
 		DBUS_TYPE_UINT32, &((*result)->dnssec_status), DBUS_TYPE_UINT64, &((*result)->ttl),
 		DBUS_TYPE_UINT32, &((*result)->ipv4_count), DBUS_TYPE_UINT32, &((*result)->ipv6_count),
-		DBUS_TYPE_STRING, &((*result)->ipv4), DBUS_TYPE_STRING, &((*result)->ipv6),
-		DBUS_TYPE_STRING, &((*result)->cname), DBUS_TYPE_INVALID))
+		DBUS_TYPE_STRING, &ipv4, DBUS_TYPE_STRING, &ipv6,
+		DBUS_TYPE_STRING, &cname, DBUS_TYPE_INVALID))
 	{
 		log_warning("proxy_resolve< Error reading message: %s >", err.message);
 		if(*result != NULL)
@@ -108,6 +114,12 @@ int ipc_dbus_proxy_resolve(char* query, int type, int af, response_bundle **resu
 			(*result)->ipv4_count = 0;
 			(*result)->ipv6_count = 0;
 		}
+	}
+	if(cname != NULL && ipv4 != NULL && ipv6 != NULL)
+	{
+		memcpy((*result)->cname, cname, sizeof((*result)->cname));
+		memcpy((*result)->ipv4, ipv4, sizeof((*result)->ipv4));
+		memcpy((*result)->ipv6, ipv6, sizeof((*result)->ipv6));
 	}
 	dbus_message_unref(reply);  
 	return ret;
@@ -132,8 +144,10 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 	if(context != NULL && extensions != NULL)
 	{
 		req_params req;
-		if (dbus_message_get_args(msg, &err, DBUS_TYPE_STRING, &(req.query), DBUS_TYPE_INT32, &(req.reverse), DBUS_TYPE_INT32, &(req.af), DBUS_TYPE_INVALID))
+		char *req_query = NULL;
+		if (dbus_message_get_args(msg, &err, DBUS_TYPE_STRING, &req_query, DBUS_TYPE_INT32, &(req.reverse), DBUS_TYPE_INT32, &(req.af), DBUS_TYPE_INVALID))
 		{
+			memcpy(req.query, req_query, sizeof(req.query));
 			do_query(context, extensions, &req, &addr_data);
 		}else{
 			log_warning("%s", err.message); 
@@ -149,11 +163,14 @@ void handle_method_call(DBusMessage* msg, DBusConnection* conn)
 		success = 1;
 	}
 	reply = dbus_message_new_method_return(msg);
+	char *cname = addr_data->cname;
+	char *ipv4 = addr_data->ipv4;
+	char *ipv6 = addr_data->ipv6;
 	if (!dbus_message_append_args(reply, DBUS_TYPE_UINT32, &success, DBUS_TYPE_UINT32, &(addr_data->respstatus),
 		DBUS_TYPE_UINT32, &(addr_data->dnssec_status), DBUS_TYPE_UINT64, &(addr_data->ttl),
 		DBUS_TYPE_UINT32, &(addr_data->ipv4_count), DBUS_TYPE_UINT32, &(addr_data->ipv6_count),
-		DBUS_TYPE_STRING, &(addr_data->ipv4), DBUS_TYPE_STRING, &(addr_data->ipv6),
-		DBUS_TYPE_STRING, &(addr_data->cname), DBUS_TYPE_INVALID))
+		DBUS_TYPE_STRING, &ipv4, DBUS_TYPE_STRING, &ipv6,
+		DBUS_TYPE_STRING, &cname, DBUS_TYPE_INVALID))
 	{
 		log_critical("handle_method_call< Error appending arguments. >");
 	}else if(addr_data && addr_data != &RESP_BUNDLE_EMPTY)

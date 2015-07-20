@@ -52,9 +52,9 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 	}
 	int ret = -1;
 	ret = ctx_proxy(query, is_reverse, af, result);
-	if((ret == -1) 
-	|| (*result != NULL && (((*result)->respstatus != GETDNS_RESPSTATUS_GOOD)
-		|| ((*result)->dnssec_status == GETDNS_DNSSEC_BOGUS))))
+	if(*result != NULL && ((ret == -1) 
+	|| (((*result)->respstatus != GETDNS_RESPSTATUS_GOOD)
+		|| ((*result)->dnssec_status == GETDNS_DNSSEC_BOGUS))) )
 	{
 		int preserve_respstatus = 0;
 		response_bundle *local_redirect = NULL;
