@@ -6,6 +6,7 @@ EXTRA_LDLIBS = @extra_ldlibs@
 CTX_PROXY_IMPL = @ctx_proxy_impl@
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
+HOSTNAME = $(shell hostname)
 
 all : browser_detect options_parse getaddrinfo http_test
 
@@ -40,6 +41,8 @@ endif
 getaddrinfo_test : getaddrinfo
 	#This should return an IPv4-mapped IPv6
 	getent ahostsv6 127.0.0.2
+	#Testing hostname resolution
+	getent ahosts $(HOSTNAME)
 	#Testing IPv4 enumeration from nsswitch
 	getent ahostsv4 getdnsapi.net
 	#Testing IPv6 enumeration from nsswitch

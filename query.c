@@ -24,6 +24,10 @@ do{	\
 static const getdns_bindata TYPE_IPv4 = {4, (void *)"IPv4"};
 static const getdns_bindata TYPE_IPv6 = {16, (void *)"IPv6"};
 
+response_bundle RESP_BUNDLE_LOCALHOST = {.ttl=0, .respstatus=GETDNS_RESPSTATUS_GOOD, .dnssec_status=GETDNS_DNSSEC_INSECURE,
+	.ipv4_count=1, .ipv6_count=1, .ipv4=GETDNS_LOCALHOST_IPV4, .ipv6=GETDNS_LOCALHOST_IPV6};
+	
+
 response_bundle RESP_BUNDLE_EMPTY = {.ttl=0, .respstatus=GETDNS_RESPSTATUS_NO_NAME, .dnssec_status=GETDNS_DNSSEC_INSECURE,
 	.ipv4_count=0, .ipv6_count=0, .ipv4="", .ipv6="", .cname=""};
 	

@@ -9,6 +9,8 @@
 #define GETDNS_CONFIG_IPV4 "ipv4:127.127.127.128"
 #define GETDNS_CONFIG_IPV6 "ipv6:::ffff:127.127.127.128"
 #define GETDNS_CONFIG_LOCALNAME "getdns-config.localhost"
+#define GETDNS_LOCALHOST_IPV4 "ipv4:127.0.0.2"
+#define GETDNS_LOCALHOST_IPV6 "ipv6:::1"
 
 #define MAX_NUM_ANSWERS 10
 
@@ -37,6 +39,10 @@ typedef struct request_params_bundle
 	int af;
 } req_params;
 	
+/*
+*Response bundle for LOCALHOST, if no public IP configured
+*/
+extern response_bundle RESP_BUNDLE_LOCALHOST;
 /*
 *Response bundle for negative answers
 */

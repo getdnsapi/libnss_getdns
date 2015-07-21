@@ -58,12 +58,12 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 	{
 		int preserve_respstatus = 0;
 		response_bundle *local_redirect = NULL;
-		if(strncmp(query, GETDNS_CONFIG_LOCALNAME, sizeof(GETDNS_CONFIG_LOCALNAME))==0
+		if(strncasecmp(query, GETDNS_CONFIG_LOCALNAME, sizeof(GETDNS_CONFIG_LOCALNAME))==0
 			|| strncmp(query, GETDNS_CONFIG_IPV4+5, sizeof(GETDNS_CONFIG_IPV4)-5)==0
 			|| strncmp(query, GETDNS_CONFIG_IPV6+5, sizeof(GETDNS_CONFIG_IPV6)-5)==0)
 		{
 			local_redirect = &RESP_BUNDLE_LOCAL_CONFIG;
-		}else if(strncmp(query, GETDNS_ERR_LOCALNAME, sizeof(GETDNS_ERR_LOCALNAME))==0
+		}else if(strncasecmp(query, GETDNS_ERR_LOCALNAME, sizeof(GETDNS_ERR_LOCALNAME))==0
 			|| strncmp(query, GETDNS_ERR_IPV4+5, sizeof(GETDNS_ERR_IPV4)-5)==0
 			|| strncmp(query, GETDNS_ERR_IPV6+5, sizeof(GETDNS_ERR_IPV6)-5)==0)
 		{

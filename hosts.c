@@ -18,6 +18,7 @@
 extern void __freeaddrinfo(struct addrinfo*);
 extern void v42v6_map(char*);
 extern void *addr_data_ptr(struct sockaddr_storage*);
+extern int resolve_local(const char*, response_bundle**);
 
 const int IN6_ADDRLEN = sizeof(struct sockaddr_in6);
 const int IN_ADDRLEN = sizeof(struct sockaddr_in);
@@ -331,6 +332,15 @@ int resolve(const char *query, struct callback_fn_arg *userarg)
 			resolve_with_managed_ctx((char*)query, 0, af, &response);
 		}else{
 			resolve_with_managed_ctx((char*)query, 0, af, &response);
+		}
+		if((response == NULL) || ((response->ipv4_count + response->ipv6_count) < 1))
+		{
+			if(response)
+			{
+				free(response);
+				response = NULL;
+			}
+			resolve_local(query, &response);
 		}
 		if(response == NULL)
 		{
