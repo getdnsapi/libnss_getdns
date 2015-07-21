@@ -64,10 +64,12 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		num_answers = response->ipv6_count;
 		addr_string = response->ipv6;
 		result->h_length = sizeof(struct in6_addr);
+		af = AF_INET6;
 	}else if(af == AF_INET || af == AF_UNSPEC){
 		num_answers = response->ipv4_count;
 		addr_string = response->ipv4;
 		result->h_length = sizeof(struct in_addr);
+		af = AF_INET;
 	}else{
 		log_warning("getdns_gethostinfo: Address family not supported: %d .", af);
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
@@ -77,9 +79,9 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
         return GETDNS_RETURN_GENERIC_ERROR;
     }
-	result->h_addrtype = af;
-	result->h_addr_list = (char**)intern_buffer; 
-	/*Reserve the first section for result->h_addr_list[num_answers] and result->h_name*/
+	result->h_addrtype = af; 
+	/*Reserve the first section for result->h_addr_list[num_answers]*/
+	result->h_addr_list = (char**)intern_buffer;
 	intern_buffer += sizeof(char*) * (num_answers + 1);
 	buflen -= sizeof(char*) * (num_answers + 1);
 	char *addr_list[num_answers];
@@ -90,8 +92,8 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 	}
 	for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
     {
-		char tmp_name[af == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr)];
-		memset(tmp_name, 0, sizeof(tmp_name));
+		char tmp_name[result->h_length];
+		memset(tmp_name, 0, result->h_length);
 		inet_pton(af, addr_list[answer_idx], tmp_name);
 		size_t len = sizeof(tmp_name);
 		if(buflen < len)
@@ -104,8 +106,15 @@ static getdns_return_t extract_hostent(struct hostent *result, response_bundle *
 		intern_buffer += len;
 		buflen -= len;
     }
-    memcpy(intern_buffer, response->cname, strlen(response->cname));
+    
+	size_t cname_len = strlen(response->cname) + 2;
+	memcpy(intern_buffer, response->cname, cname_len-2);
+	memset(intern_buffer + cname_len - 1, 0, sizeof(char));
 	result->h_name = intern_buffer;
+	intern_buffer += cname_len;
+	buflen -= cname_len;
+	result->h_aliases = (char**)intern_buffer;
+	result->h_aliases[0] = NULL;	
     *respstatus = response->respstatus;
 	return GETDNS_RETURN_GOOD;
 }
