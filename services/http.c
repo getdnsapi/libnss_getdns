@@ -18,6 +18,8 @@
 #include "../context_interface.h"
 #include "../nss_getdns.h"
 
+#define  UNUSED_PARAM(x) ((void)(x))
+
 #define HTTP_HTML_HEADER "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: %ld\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n"
 #define HTTP_ICON_HEADER "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: %ld\r\nConnection: close\r\nContent-Type: image/x-icon\r\n\r\n"
 
@@ -29,7 +31,7 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 {
 	FILE *fp;
 	char *header_str = NULL, *fname = NULL;
-	size_t page_size = 0, len = 0;
+	size_t page_size = 0, len = 0, num_bytes;
 	struct error_t *err_msg = NULL;
 	int form_pg = 0;
 	switch(srv_rq)
@@ -68,7 +70,7 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 		return;
 	}
 	memset(*content, 0, len+1);
-	fread(*content, len, 1, fp);
+	num_bytes = fread(*content, len, 1, fp);
 	fclose(fp);
 	/*Complete page*/
 	*header = malloc(strlen(header_str) + 10);
@@ -101,6 +103,7 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 		page_size = strlen(*content);
 	}
 	snprintf(*header, strlen(header_str) + 10, header_str, (long)page_size);
+	UNUSED_PARAM(num_bytes);
 }
 
 enum service_type process_input(int fd, char **msg)
@@ -200,9 +203,11 @@ void http_listen(int port)
 				close(client_fd);
 				continue;
 			}   
-			write(client_fd, header, strlen(header));
-			write(client_fd, content, strlen(content));
-			write(client_fd, "\r\n", strlen("\r\n"));
+			size_t num_bytes;
+			num_bytes = write(client_fd, header, strlen(header));
+			num_bytes = write(client_fd, content, strlen(content));
+			num_bytes = write(client_fd, "\r\n", strlen("\r\n"));
+			UNUSED_PARAM(num_bytes);
 			close(client_fd);
 			free(content);
 			free(header);
