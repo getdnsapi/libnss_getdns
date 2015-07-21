@@ -19,7 +19,7 @@ LIBNAME = getdns_shim-1.15.so
 LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
-CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O0 -fPIC -Wall
+CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O3 -fPIC -Wall
 LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
 
