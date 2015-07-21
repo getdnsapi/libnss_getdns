@@ -8,8 +8,8 @@ DEFS=-DHAVE_CONFIG_H
 CONTEXT_DAEMON_EXEC=getdns_daemon
 TEST_DIR=test
 PRELOAD_LIB = no
-CTX_PROXY = 
-CTX_PROXY_IMPL = 
+CTX_PROXY = unix
+CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/context_proxies/unix/*.c
 EXTRA_DEPS_INCLUDES = 
 EXTRA_LDLIBS = 
 CC = gcc
@@ -37,7 +37,7 @@ build_tests :
 test : build_tests
 	$(MAKE) -C $(TEST_DIR) test
 	
-install : build    
+install : $(MODULE_NAME)
 	cp $(MODULE_NAME) $(LIB_PATH)
 	ldconfig -v $(INSTALL_PATH)
 	ln -sf $(LIB_PATH) $(LIB_ALIAS)

@@ -241,8 +241,8 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
 	size_t idx, min_space, cname_len;
 	num_answers = response->ipv4_count + response->ipv6_count;
     char *canon_name = response->cname;
-    cname_len = strlen(canon_name);
-    min_space = sizeof(canon_name) + (sizeof(struct gaih_addrtuple) * num_answers);
+    cname_len = strlen(canon_name) + 2;
+    min_space = cname_len + (sizeof(struct gaih_addrtuple) * num_answers);
     if( buflen < min_space )
     {
         log_critical("GETDNS: Buffer too small: %zd\n", buflen);
@@ -252,8 +252,9 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     /*Fill in hostname*/
     char *hname;
     hname = intern_buffer;
-    memcpy(hname, canon_name, cname_len);
-    idx = sizeof(canon_name);
+    memcpy(hname, canon_name, cname_len-2);
+    memset(hname + cname_len-1, 0, sizeof(char));
+    idx = cname_len;
     /*Fill in addresses*/
     void add_addrtuple(char *data, int family)
     {

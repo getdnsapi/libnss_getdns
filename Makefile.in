@@ -37,7 +37,7 @@ build_tests :
 test : build_tests
 	$(MAKE) -C $(TEST_DIR) test
 	
-install : build    
+install : $(MODULE_NAME)
 	cp $(MODULE_NAME) $(LIB_PATH)
 	ldconfig -v $(INSTALL_PATH)
 	ln -sf $(LIB_PATH) $(LIB_ALIAS)

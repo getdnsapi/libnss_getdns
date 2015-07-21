@@ -141,7 +141,7 @@ static getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter,
 	char *cname = extract_cname(response, "canonical_name");
 	if(cname != NULL)
 	{
-		strncpy((*ret)->cname, cname, strlen(cname)); 
+		strncpy((*ret)->cname, cname, strlen(cname)-1); 
 		free(cname);
 	}
 	memcpy((*ret)->ipv4, "ipv4:", 5);
@@ -229,7 +229,7 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 					char *cname = extract_cname(data, "ptrdname");
 					if(cname)
 					{
-						strncpy((*ret)->cname, cname, strlen(cname));
+						strncpy((*ret)->cname, cname, strlen(cname)-1);
 						free(cname);
 					}
 					getdns_bindata *dname;

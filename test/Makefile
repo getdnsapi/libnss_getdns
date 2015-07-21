@@ -1,9 +1,9 @@
 CC = gcc
-CTX_PROXY = 
-CTX_PROXY_IMPL = 
+CTX_PROXY = unix
+CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/context_proxies/unix/*.c
 EXTRA_DEPS_INCLUDES = 
 EXTRA_LDLIBS = 
-CTX_PROXY_IMPL = 
+CTX_PROXY_IMPL = /home/hbucuti/getdns/ipc/context_proxies/unix/*.c
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
 
@@ -38,16 +38,22 @@ else
 endif
 	 
 getaddrinfo_test : getaddrinfo
-	./gai_test getdns-config.localhost 4 1
-	./gai_test getdns-errors.localhost 4 1
-	./gai_test getdnsapi.net 4 1
-	./gai_test getdnsapi.net 6 1
-	./gai_test getdnsapi.net 7 1
-	./gai_test dnssec-failed.org 4 1
+	#Testing IPv4 enumeration from nsswitch
+	getent ahostsv4 getdnsapi.net
+	#Testing IPv6 enumeration from nsswitch
+	getent ahostsv6 getdnsapi.net
+	#Testing AF_UNSPEC enumeration from nsswitch
+	getent ahosts getdnsapi.net
+	#Testing config and error addresses
+	getent ahostsv4 getdns-config.localhost
+	getent ahostsv4 getdns-errors.localhost
+	#Timing batch queries
 	time ./gai_test smartrwanda.net 4 10
 	time ./gai_test smartrwanda.net 4 100
 	time ./gai_test smartrwanda.net 4 1000
 	time ./gai_test smartrwanda.net 4 10000
+	#Testing dnssec-failed.org/AF_INET (should fail!)
+	getent ahostsv4 dnssec-failed.org
 
 	
 clean :
