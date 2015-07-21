@@ -38,6 +38,8 @@ else
 endif
 	 
 getaddrinfo_test : getaddrinfo
+	#This should return an IPv4-mapped IPv6
+	getent ahostsv6 127.0.0.2
 	#Testing IPv4 enumeration from nsswitch
 	getent ahostsv4 getdnsapi.net
 	#Testing IPv6 enumeration from nsswitch
