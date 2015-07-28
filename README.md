@@ -13,7 +13,7 @@ libgetdns and its dependencies must be installed before building the library.
 3. Supported platforms
 ______________________
   - Ubuntu
-  - Centos
+  - CentOS
   - Debian
   - FreeBSD
 
