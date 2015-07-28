@@ -14,6 +14,7 @@ libgetdns and its dependencies must be installed before building the library.
 ______________________
   - Ubuntu
   - Centos
+  - Debian
   - FreeBSD
 
 4. Installing the library
