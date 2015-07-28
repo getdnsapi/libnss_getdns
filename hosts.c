@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <getdns/getdns.h>
 #include <getdns/getdns_extra.h>
+#include <signal.h>
 #include "logger.h"
 #include "nss_getdns.h"
 #include "addr_utils.h"
@@ -22,7 +23,6 @@ extern int resolve_local(const char*, response_bundle**);
 
 const int IN6_ADDRLEN = sizeof(struct sockaddr_in6);
 const int IN_ADDRLEN = sizeof(struct sockaddr_in);
-
 
 struct callback_fn_arg
 {
@@ -46,12 +46,18 @@ static int parse_addr_list(char *arg, char **buf_ptr, int num)
 	return ret == num ? ret : 0;
 }
 
+void sig_handler(int signum)
+{
+	return;
+}
+
 /*
 *TODO: Check for and handle [_res.options & RES_USE_INET6]
 */
-static getdns_return_t extract_hostent(struct hostent *result, response_bundle *response, int af, int reverse, 
+getdns_return_t extract_hostent(struct hostent *result, response_bundle *response, int af, int reverse, 
 		char *intern_buffer, size_t buflen, uint32_t *respstatus)
 {
+	signal(SIGPIPE, sig_handler);
 	*respstatus = GETDNS_RESPSTATUS_NO_NAME;
 	size_t answer_idx, num_answers = 0, addr_idx = 0;
 	char *addr_string;
@@ -231,6 +237,27 @@ static getdns_return_t extract_addrinfo(struct addrinfo **result, struct addrinf
 	return *result != NULL ? return_code : GETDNS_RETURN_GENERIC_ERROR;
 }
 
+/*Fill in addresses*/
+#define add_addrtuple(data, af)	\
+    do{	\
+    	struct gaih_addrtuple *addr_tuple = (struct gaih_addrtuple*) (intern_buffer + idx);	\
+        idx += sizeof(struct gaih_addrtuple);	\
+        addr_tuple->name = hname;	\
+        addr_tuple->family = af;	\
+		char ip_data[af == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN];	\
+		inet_pton(af, data, ip_data); 	\
+		size_t len = sizeof(ip_data);	\
+        memcpy(addr_tuple->addr, ip_data, len);	\
+	    addr_tuple->scopeid = 0;	\
+	    addr_tuple->next = NULL;	\
+	    if(rec_count > 0){	\
+	        gaih_ptr->next = addr_tuple;	\
+	    }else{	\
+	        *result_addrtuple = addr_tuple;	\
+	    }	\
+	    gaih_ptr = addr_tuple;	\
+    }while(0)
+    
 /*
 *TODO: Check for and handle [_res.options & RES_USE_INET6]
 */
@@ -265,26 +292,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     memcpy(hname, canon_name, cname_len-2);
     memset(hname + cname_len-1, 0, sizeof(char));
     idx = cname_len;
-    /*Fill in addresses*/
-    void add_addrtuple(char *data, int family)
-    {
-    	struct gaih_addrtuple *addr_tuple = (struct gaih_addrtuple*) (intern_buffer + idx);
-        idx += sizeof(struct gaih_addrtuple);
-        addr_tuple->name = hname;
-        addr_tuple->family = family;
-		char ip_data[family == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN];
-		inet_pton(family, data, ip_data); 
-		size_t len = sizeof(ip_data);
-        memcpy(addr_tuple->addr, ip_data, len);
-	    addr_tuple->scopeid = 0;
-	    addr_tuple->next = NULL;
-	    if(rec_count > 0){
-	        gaih_ptr->next = addr_tuple;
-	    }else{
-	        *result_addrtuple = addr_tuple;
-	    }
-	    gaih_ptr = addr_tuple;
-    }
+    
     if(response->ipv6_count > 0)
     {
     	char *addr_list[response->ipv6_count];
