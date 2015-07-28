@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <linux/if_link.h>
 #include "context_interface.h"
 #include "logger.h"
 
@@ -29,7 +28,7 @@ int resolve_local(const char *query, response_bundle **ret)
 		log_critical("gethostname() failed.");
 		return -1;
 	}
-	if(strncasecmp(hostname, query, strlen(hostname)) == 0)
+	if(strcasecmp(hostname, query) == 0)
 	{
 		is_hostname = 1;
 	}
