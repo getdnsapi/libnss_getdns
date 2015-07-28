@@ -1,6 +1,9 @@
-#include <resolv.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <resolv.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -88,7 +91,7 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 			return return_code;
 		}
 		getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
-		getdns_context_set_use_threads(context, 1);
+		//getdns_context_set_use_threads(context, 1);
 		*ctx = context;
 	}
 	return return_code;
