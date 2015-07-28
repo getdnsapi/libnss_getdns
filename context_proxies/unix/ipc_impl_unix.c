@@ -104,7 +104,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
     {
     	int errnum = errno;
         log_info("ipc_unix_proxy_resolve< connect(%s): %s >", ADDRESS, strerror(errnum));
-        if(errnum == ECONNREFUSED)
+        if(errnum == ECONNREFUSED || errnum == ENOENT)
         {
         	ipc_unix_start_daemon();
         	log_info("ipc_unix_proxy_resolve< Retrying to connect to %s >", ADDRESS);
@@ -114,7 +114,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
         		return -1;
         	}
         }else{
-        	log_critical("ipc_unix_proxy_resolve< Exiting with error: %s >", strerror(errno));
+        	log_critical("ipc_unix_proxy_resolve< Exiting with error: %s : %d >", strerror(errno), errnum);
         	return -1;
         }
     }
