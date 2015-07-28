@@ -21,12 +21,14 @@ LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O3 -fPIC -Wall
 LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
-LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
+LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -lcrypto -lssl $(EXTRA_LDLIBS)
+srcdir = @srcdir@
+INSTALL = @INSTALL@
 
 build : $(OBJECTS)
 ifneq ($(CTX_PROXY), )
 	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(MODULE_NAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
-	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDLIBS)
+	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 else
 	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS) $(LDLIBS)
 endif
@@ -38,23 +40,37 @@ test : build_tests
 	$(MAKE) -C $(TEST_DIR) test
 	
 install : $(MODULE_NAME)
+	mkdir -p $(SERVICE_EXEC_DIR)
 	cp $(MODULE_NAME) $(LIB_PATH)
 	ldconfig -v $(INSTALL_PATH)
 	ln -sf $(LIB_PATH) $(LIB_ALIAS)
 ifeq ($(CTX_PROXY), dbus)
-	cp data/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE)
-	cp data/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE)
-	mkdir -p $(SERVICE_EXEC_DIR)
-	cp $(CONTEXT_DAEMON_EXEC) $(SERVICE_EXEC_DIR)/$(CONTEXT_DAEMON_EXEC)
+	$(INSTALL) -m 644 $(srcdir)/data/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)
+	$(INSTALL) -m 644 $(srcdir)/data/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)
+	$(INSTALL) -m 644  $(srcdir)/$(CONTEXT_DAEMON_EXEC) $(SERVICE_EXEC_DIR)
 endif
-	cp data/error.html $(SERVICE_EXEC_DIR)/error.html
-	cp data/settings.html $(SERVICE_EXEC_DIR)/settings.html
-	cp data/getdns.conf /etc/getdns.conf
+	$(INSTALL) -m 644 $(srcdir)/data/error.html $(SERVICE_EXEC_DIR)
+	$(INSTALL) -m 644 $(srcdir)/data/settings.html $(SERVICE_EXEC_DIR)
+	$(INSTALL) -m 644 $(srcdir)/data/getdns.conf /etc
 	sh ./activate.sh
+	@echo "***"
+	@echo "***  !!! IMPORTANT !!!!  this library uses nsswitch!"
+	@echo "***"
+	@echo "***  For the library to be used instead of the system's default,"
+	@echo "***  it has to be activated through nsswitch"
+	@echo "***  in the file: "
+	@echo "***        /etc/nsswitch.conf"
+	@echo "***"
+	@echo "***  Replace the default source for the 'hosts' database by 'getdns'"
+	@echo "***  for instance, find the line that starts with 'hosts:' and replace anything but 'files' by 'getdns' "
+	@echo "***"
+	@echo "***  Leaving the 'files' source is optional, as the library will by default consult it if necessary."
+	@echo "***	The library can be configured through /etc/getdns.conf, or in a browser at http://getdns-config.localhost:8080"
+	@echo "***"
 	
 uninstall:
 	sh ./activate.sh --reverse
-	yes | rm -f $(LIB_ALIAS) $(LIB_PATH) $(DBUS_INTERFACES_DIR)/$(DBUS_INTERFACE_FILE) $(DBUS_SERVICES_DIR)/$(DBUS_SERVICE_FILE) $(CONTEXT_DAEMON_EXEC)
+	yes | rm -rf $(LIB_ALIAS) $(LIB_PATH) $(DBUS_INTERFACES_DIR) $(DBUS_SERVICES_DIR) 
 	ldconfig -v $(INSTALL_PATH)
 
 obj : 

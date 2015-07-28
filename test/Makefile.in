@@ -5,7 +5,8 @@ EXTRA_DEPS_INCLUDES = @extra_includes@
 EXTRA_LDLIBS = @extra_ldlibs@
 CTX_PROXY_IMPL = @ctx_proxy_impl@
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -Werror 
-LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -ldl  -lcrypto -lssl $(EXTRA_LDLIBS)
+LDFLAGS = -L/usr/local/lib
+LDLIBS = -lm -lgetdns -lunbound -lidn -lldns  -lcrypto -lssl $(EXTRA_LDLIBS)
 HOSTNAME = $(shell hostname)
 
 all : browser_detect options_parse getaddrinfo http_test
@@ -26,16 +27,16 @@ options_parse_test : options_parse
 
 http_test: http_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL)
 ifneq ($(CTX_PROXY),)
-	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDLIBS) -DHTTP_MAIN
+	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDFLAGS) $(LDLIBS) -DHTTP_MAIN
 else
-	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CFLAGS) $(LDLIBS) -DHTTP_MAIN
+	$(CC) -o http_test http_test.c ../*.c ../services/*.c $(CFLAGS) $(LDFLAGS) $(LDLIBS) -DHTTP_MAIN
 endif
 
 getaddrinfo : gai_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL)
 ifneq ($(CTX_PROXY),)
-	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDLIBS)
+	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CTX_PROXY_IMPL) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 else
-	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CFLAGS) $(LDLIBS)
+	$(CC) -o gai_test gai_test.c ../*.c ../services/*.c $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 endif
 	 
 getaddrinfo_test : getaddrinfo
