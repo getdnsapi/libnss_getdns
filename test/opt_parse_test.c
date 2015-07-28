@@ -16,7 +16,7 @@ void test_dnssec_settings()
 	snprintf(attributes, MAXSTRLEN, "dnssec: %s %s", DNSSEC_ATTR_VALIDATE, DNSSEC_ATTR_SECURE_ONLY);
 	printf("TEST LINE: %s\n", attributes);
 	parse_single_option(attributes, dnssec_atflags, dnssec_atstrings, dnssec_attr_num, &options);
-	assert(options  == DNSSEC_VALIDATE | DNSSEC_SECURE_ONLY);
+	assert(options  == (DNSSEC_VALIDATE | DNSSEC_SECURE_ONLY));
 	printf("ALL TESTS PASSED!\n");
 }
 
