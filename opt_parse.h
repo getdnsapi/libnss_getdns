@@ -1,7 +1,7 @@
 #ifndef GETDNS_OPT_PARSE_H
 #define GETDNS_OPT_PARSE_H
 
-typedef enum resolv_options 
+enum resolv_options 
 {
 	DNSSEC_VALIDATE = 1, /* (1 << 0) */
 	DNSSEC_SECURE_ONLY = 2, /* (1 << 1) */
@@ -16,7 +16,7 @@ typedef enum resolv_options
 	DEBUG_VERBOSE = 1 << 14,
 	/*Last bit for app-saved preferences*/
 	APP_OVERRIDES = 1 << 15
-} res_opt ;
+};
 
 #define MINIMAL_DEFAULTS_OPTION_STR "MIN_DEFAULTS"
 #define MINIMAL_DEFAULTS_ATTR "MIN_DEFAULTS:%d%*s"
@@ -43,6 +43,7 @@ extern const char* debug_atstrings[];
 extern const int debug_atflags[];
 extern const int debug_attr_num;
 
+void parse_single_option(char*, const int*, const char**, const int, int*);
 void parse_options(char *conf_file, int *ret);
 void save_options(int options, char *options_file, int cur_user);
 int parse_keyval_options(char *data);
