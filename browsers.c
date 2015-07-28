@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <math.h>
 #include "logger.h"
@@ -100,8 +102,15 @@ int is_known_browser(struct query_hints *params)
 
 int browser_check(int af)
 {
+	#if defined(__FreeBSD__)
+	char *__progname = NULL;
+	const char *pgm_nm = getprogname();
+	__progname = pgm_nm == NULL ? strdup("") : strdup(pgm_nm);
+	char *program_invocation_name = strdup(__progname);
+	#else
 	extern char *program_invocation_name;
 	extern char *__progname;
+	#endif
 	char *prog_name = __progname == program_invocation_name ? __progname : strtok(program_invocation_name, " ");
 	if(strchr(prog_name, '/'))
 	{
