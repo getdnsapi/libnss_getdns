@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../../nss_getdns.h"
 #include "../../logger.h"
 #include "../../context_interface.h"
@@ -113,7 +114,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
         		return -1;
         	}
         }else{
-        	log_critical("ipc_unix_proxy_resolve< Exiting with error. >");
+        	log_critical("ipc_unix_proxy_resolve< Exiting with error: %s >", strerror(errno));
         	return -1;
         }
     }
