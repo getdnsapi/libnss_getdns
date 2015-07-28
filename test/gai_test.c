@@ -14,8 +14,9 @@ extern int getdns_mirror_getaddrinfo(const char*, const char*, const struct addr
 extern int getdns_mirror_getnameinfo(const struct sockaddr*, socklen_t, char*, size_t, char*, size_t, int);
 extern void getdns_mirror_freeaddrinfo(struct addrinfo*);
 extern void *addr_data_ptr(struct sockaddr_storage*);
+int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int turns, int(*gai_func)(const char*, const char*, const struct addrinfo*, struct addrinfo**),
+        void(ai_free_func)(struct addrinfo*));
 
-void dd(){}
 int main(int argc , char *argv[])
 {
     if(argc <4 )
@@ -44,8 +45,8 @@ int main(int argc , char *argv[])
     struct hostent *he = NULL;
     printf("\n================\n");
     t = clock();
-    if( 0 == ( (ret = hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) 
-    	| (ret = hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo)) ))
+    if( 0 == (hostname_to_ip(hostname , ip_1, &ret1_af, af, num_runs, &getaddrinfo, &freeaddrinfo) 
+    	| hostname_to_ip(hostname , ip_2, &ret2_af, af, num_runs, &getaddrinfo, &freeaddrinfo) ))
     {
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_2);
@@ -56,7 +57,7 @@ int main(int argc , char *argv[])
 		inet_pton(ret2_af, ip_2, addr_data_ptr(&sa2));
 		char errbuf[2048];
 		int flags = NI_NAMEREQD;
-		ret1 = getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
+		ret1 = getdns_mirror_getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
 		if(ret1==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_1, hostname, rev_ip_1);
 		else{
@@ -64,7 +65,6 @@ int main(int argc , char *argv[])
 			herror(errbuf);
 		}
 		ret2 = getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
-		dd();
 		if(ret2==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_2, hostname, rev_ip_2);
 		else{
@@ -113,7 +113,10 @@ int hostname_to_ip(char * hostname , char* ret, int *ret_af, int af, int turns, 
 		    s_in->sin_port, s_in->sin_family, res->ai_protocol, res->ai_family, res->ai_flags, res->ai_addrlen, res->ai_canonname);*/
 		    //printf("Addr #%d: %s \n", ++count, count == 1? ret : tmp);
 		}
-		ai_free_func(res0);
+		if(res0)
+		{	
+			ai_free_func(res0);
+		}
     }
     return 0;
 }
