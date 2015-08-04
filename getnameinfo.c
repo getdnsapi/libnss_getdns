@@ -156,7 +156,9 @@ int getdns_mirror_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *
 	if(host != NULL && hostlen > 0)
 	{
 		char addrstring[NI_MAXHOST];
+		memset(addrstring, 0, NI_MAXHOST);
 		char if_name[IF_NAMESIZE];
+		memset(if_name, 0, IF_NAMESIZE);
 		if((flags & NI_NUMERICHOST) != 0)
 		{
 			/*Numeric form of host address was requested instead of its name*/

@@ -1,0 +1,31 @@
+#! /bin/sh
+
+port_forward_unset(){
+	echo "[`date`] : deactivating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+	@port_forward_unset@
+	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+}
+
+port_forward_set(){
+	echo "[`date`] : activating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+	echo "Activation command: @port_forward_set@" >>  /var/log/upstart/getdns-pfw.log
+	port_forward_unset
+	@port_forward_set@
+	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+}
+
+[ "`id -u`" = 0 ] || exit 4
+set +e
+umask 0
+case "$1" in
+	start)
+	port_forward_set
+	;;
+	stop)
+	port_forward_unset
+	;;
+	*)
+	echo "Error: argument '$1' not supported" >&2
+	exit 3
+	;;
+esac

@@ -41,7 +41,7 @@ int main(int argc , char *argv[])
     char ip_1[NI_MAXHOST] = "UNKNOWN", ip_2[NI_MAXHOST] = "UNKNOWN", 
     	rev_ip_1[NI_MAXHOST], rev_ip_2[NI_MAXHOST];
     int ret = 0, ret1 = 0, ret2 = 0, ret1_af=0, ret2_af=0;
-    struct sockaddr_storage sa1, sa2;
+    struct sockaddr_storage sas1, sas2;
     struct hostent *he = NULL;
     printf("\n================\n");
     t = clock();
@@ -51,20 +51,22 @@ int main(int argc , char *argv[])
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_1);
 		printf("getXXinfo: %s resolved to %s\n" , hostname , ip_2);
 		printf("\n");
-		sa1.ss_family = ret1_af;
-		inet_pton(ret1_af, ip_1, addr_data_ptr(&sa1));
-		sa2.ss_family = ret2_af;
-		inet_pton(ret2_af, ip_2, addr_data_ptr(&sa2));
+		sas1.ss_family = ret1_af;
+		inet_pton(ret1_af, ip_1, addr_data_ptr(&sas1));
+		sas2.ss_family = ret2_af;
+		inet_pton(ret2_af, ip_2, addr_data_ptr(&sas2));
 		char errbuf[2048];
 		int flags = NI_NAMEREQD;
-		ret1 = getdns_mirror_getnameinfo((struct sockaddr*)&sa1, (socklen_t)sizeof(sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
+		struct sockaddr *sa1 = (struct sockaddr*)&sas1;
+		struct sockaddr *sa2 = (struct sockaddr*)&sas2;
+		ret1 = getnameinfo(sa1, sizeof(*sa1), rev_ip_1, sizeof(rev_ip_1), NULL, 0, flags);
 		if(ret1==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_1, hostname, rev_ip_1);
 		else{
 			snprintf(errbuf, sizeof(errbuf), "%s: %s", "getnameinfo [1]", gai_strerror(ret1));
 			herror(errbuf);
 		}
-		ret2 = getnameinfo((struct sockaddr*)&sa2, (socklen_t)sizeof(sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
+		ret2 = getnameinfo(sa2, sizeof(*sa2), rev_ip_2, sizeof(rev_ip_2), NULL, 0, flags);
 		if(ret2==0)
 			printf("Reverse lookup for %s (%s) => %s\n", ip_2, hostname, rev_ip_2);
 		else{

@@ -1,0 +1,31 @@
+#! /bin/sh
+
+port_forward_unset(){
+	echo "[`date`] : deactivating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+	iptables -o lo -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
+	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+}
+
+port_forward_set(){
+	echo "[`date`] : activating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+	echo "Activation command: iptables -o lo -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080" >>  /var/log/upstart/getdns-pfw.log
+	port_forward_unset
+	iptables -o lo -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
+	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+}
+
+[ "`id -u`" = 0 ] || exit 4
+set +e
+umask 0
+case "$1" in
+	start)
+	port_forward_set
+	;;
+	stop)
+	port_forward_unset
+	;;
+	*)
+	echo "Error: argument '$1' not supported" >&2
+	exit 3
+	;;
+esac

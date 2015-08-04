@@ -27,7 +27,7 @@
 #define HAVE_ARPA_NAMESER_H 1
 
 /* Use a managed getdns context via a context proxy */
-/* #undef HAVE_CONTEXT_PROXY */
+#define HAVE_CONTEXT_PROXY "unix"
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1

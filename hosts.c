@@ -97,13 +97,18 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
         return GETDNS_RETURN_GENERIC_ERROR;
 	}
+	if(buflen <= 0)
+	{
+		log_warning("GETDNS: buffer too small.\n");
+		return GETDNS_RETURN_MEMORY_ERROR;
+	}
 	for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
     {
 		char tmp_name[result->h_length];
 		memset(tmp_name, 0, result->h_length);
 		inet_pton(af, addr_list[answer_idx], tmp_name);
 		size_t len = sizeof(tmp_name);
-		if(buflen < len)
+		if(buflen <= len)
 		{
 			log_warning("GETDNS: buffer too small.\n");
 			return GETDNS_RETURN_MEMORY_ERROR;
@@ -115,6 +120,11 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
     }
     
 	size_t cname_len = strlen(response->cname) + 2;
+	if(buflen <= cname_len)
+	{
+		log_warning("GETDNS: buffer too small.\n");
+		return GETDNS_RETURN_MEMORY_ERROR;
+	}
 	memcpy(intern_buffer, response->cname, cname_len-2);
 	memset(intern_buffer + cname_len - 1, 0, sizeof(char));
 	result->h_name = intern_buffer;
@@ -416,12 +426,12 @@ getdns_return_t getdns_gethostinfo(const char *name, int af, struct addr_param *
 /*
 *wrapper for getnameinfo().
 */
-getdns_return_t getdns_getnameinfo (const void *addr, const int af, char *nodename, size_t namelen, uint32_t *respstatus)
+getdns_return_t getdns_getnameinfo(const void *addr, const int af, char *nodename, size_t namelen, uint32_t *respstatus)
 {
     getdns_return_t return_code;
     uint32_t dnssec_status = GETDNS_DNSSEC_NOT_PERFORMED;
     struct hostent result;
-    size_t buflen = 1024;
+    size_t buflen = 2048;
     do{
     	char buffer[buflen];
 		struct addr_param result_ptr = {.addr_type=REV_HOSTENT, .addr_entry={.p_hostent=&result}};

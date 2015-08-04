@@ -629,11 +629,14 @@ dbus_interfaces_dir
 dbus_services_dir
 dbus_interface_file
 dbus_service_file
+port_forward_unset
+port_forward_set
 module_name
 extra_includes
 extra_ldlibs
 ctx_proxy_impl
 ctx_proxy
+init_script_start_cmd
 preload_on_install
 ALLOCA
 EGREP
@@ -4051,12 +4054,30 @@ os="$(uname -s)"
 case $os in
 *BSD*)
 	MODULE_NAME=nss_getdns.so.1
+	#port-forwarding currently not enabled for *BSD
+	port_forward_set=
+	port_forward_unset=
+	init_script_start_cmd="/etc/init.d/getdns-pfw start"
+
 	;;
 *Linux*)
 	MODULE_NAME=libnss_getdns.so.2
+	IPTABLES_NAT_ADD="iptables -o lo -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	IPTABLES_NAT_DEL="iptables -o lo -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	init_script_start_cmd="service getdns-pfw start"
+
 	;;
 esac
 
+#Create init scripts for port forwarding activation for error pages
+ac_config_files="$ac_config_files data/getdns-pfw-upstart"
+
+ac_config_files="$ac_config_files data/getdns-pfw-sysv"
+
+#Create default getdns config file
+ac_config_files="$ac_config_files data/getdns.conf.example"
+
+#Makefile substitutions
 ctx_proxy=$CTX_PROXY
 
 ctx_proxy_impl=$CTX_PROXY_IMPL
@@ -4066,6 +4087,11 @@ extra_ldlibs=$EXTRA_LDLIBS
 extra_includes=$EXTRA_DEPS_INCLUDES
 
 module_name=$MODULE_NAME
+
+port_forward_set=$IPTABLES_NAT_ADD
+
+port_forward_unset=$IPTABLES_NAT_DEL
+
 
 dbus_service_file=net.getdnsapi.StubResolver.service
 
@@ -4772,6 +4798,9 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+    "data/getdns-pfw-upstart") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-upstart" ;;
+    "data/getdns-pfw-sysv") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-sysv" ;;
+    "data/getdns.conf.example") CONFIG_FILES="$CONFIG_FILES data/getdns.conf.example" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "test/Makefile") CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
 
@@ -5324,6 +5353,13 @@ $as_echo "$as_me: $ac_file is unchanged" >&6;}
 
   esac
 
+
+  case $ac_file$ac_mode in
+    "data/getdns-pfw-upstart":F) mv data/getdns-pfw-upstart conf/getdns-pfw.conf ;;
+    "data/getdns-pfw-sysv":F) mv data/getdns-pfw-sysv conf/getdns-pfw ;;
+    "data/getdns.conf.example":F) mv data/getdns.conf.example conf/getdns.conf ;;
+
+  esac
 done # for ac_tag
 
 

@@ -54,10 +54,8 @@ static ns_mtab methods[]={
   { NSDB_HOSTS, "gethostbyname2_r", &__bsdnss_gethostbyname2, &_nss_getdns_gethostbyname2_r },
   { NSDB_HOSTS, "gethostbyaddr_r", &__bsdnss_gethostbyaddr, &_nss_getdns_gethostbyaddr_r },
   { NSDB_HOSTS, "gethostbyaddr2_r", &__bsdnss_gethostbyaddr2, &_nss_getdns_gethostbyaddr2_r },
-  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, 
-&getdns_mirror_getaddrinfo },
-  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, 
-&getdns_mirror_getnameinfo },
+  { NSDB_HOSTS, "getaddrinfo", &__bsdnss_getaddrinfo, &getdns_mirror_getaddrinfo },
+  { NSDB_HOSTS, "getnameinfo", &__bsdnss_getnameinfo, &getdns_mirror_getnameinfo },
   { NSDB_HOSTS, "freeaddrinfo", &__bsdnss_freeaddrinfo, &getdns_mirror_freeaddrinfo}
 };
 
@@ -73,7 +71,7 @@ int __bsdnss_gethostbyname(void *rval,void *cb_data,va_list ap)
   char *buffer;
   size_t buflen;
   struct hostent *ret;
-  int *errnop;
+  int *errnop, *h_errnop;
   enum nss_status status;
   enum nss_status (*api_funct)(const char *, int, struct hostent *, char *, size_t, int *, int *);
   name = va_arg(ap, const char*);
@@ -81,8 +79,9 @@ int __bsdnss_gethostbyname(void *rval,void *cb_data,va_list ap)
   buffer = va_arg(ap, char*);
   buflen = va_arg(ap, size_t);
   errnop = va_arg(ap, int*);
+  h_errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct(name, AF_INET, ret, buffer, buflen, errnop, &h_errno);
+  status = api_funct(name, AF_INET, ret, buffer, buflen, errnop, h_errnop);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
@@ -90,7 +89,6 @@ int __bsdnss_gethostbyname(void *rval,void *cb_data,va_list ap)
   }else{
   	*((struct hostent **)rval) = NULL;
   }
-  log_debug("BSDNSS_GETHOSTBYNAME_r(%s): %d.\n", name, status);
   return status;
 }
 
@@ -100,7 +98,7 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   char *buffer;
   size_t buflen;
   struct hostent *ret;
-  int af, *errnop;
+  int af, *errnop, *h_errnop;
   enum nss_status status;
   enum nss_status (*api_funct)(const char *, int, struct hostent *, char *, size_t, int *, int *);
   name = va_arg(ap, const char*);
@@ -109,8 +107,9 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   buffer = va_arg(ap, char*);
   buflen = va_arg(ap, size_t);
   errnop = va_arg(ap, int*);
+  h_errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct(name, af, ret, buffer, buflen, &errno, errnop);
+  status = api_funct(name, af, ret, buffer, buflen, errnop, h_errnop);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
@@ -118,69 +117,68 @@ int __bsdnss_gethostbyname2(void *rval, void *cb_data, va_list ap)
   }else{
   	*((struct hostent**)rval) = NULL;
   }
-  log_debug("BSDNSS_GETHOSTBYNAME2_r(%s): %d.\n", name, status);
   return status;
 }
 
 int __bsdnss_gethostbyaddr(void *rval, void *cb_data, va_list ap)
 {
-  const char *addr;
+  const void *addr;
   socklen_t len;
   int af;
-  struct hostent *ret, **result;
+  struct hostent *ret;
   char *buffer;
   size_t buflen;
-  int *errnop;  
+  int *errnop, *h_errnop;  
   enum nss_status status;
   enum nss_status (*api_funct)(struct in_addr *, int, int, struct hostent *, char *, size_t, int *, int *); 
-  addr = va_arg(ap, const char*);
+  addr = va_arg(ap, const void*);
   len = va_arg(ap, socklen_t);
   af = va_arg(ap, int);
   ret = va_arg(ap, struct hostent*);
   buffer = va_arg(ap, char*);
   buflen = va_arg(ap, size_t);
-  result = va_arg(ap, struct hostent**);
   errnop = va_arg(ap, int*);
+  h_errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
+  status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, h_errnop);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
-    *result = ret;
+  }else{
+  	*((struct hostent **)rval) = NULL;
   }
-  log_debug("BSDNSS_GETHOSTBYADDR_r: %d.\n", status);
   return status;
 }
 
 int __bsdnss_gethostbyaddr2(void *rval, void *cb_data, va_list ap)
 {  
-  const char *addr;
+  const void *addr;
   socklen_t len;
   int af;
-  struct hostent *ret, **result;
+  struct hostent *ret;
   char *buffer;
   size_t buflen;
-  int *errnop;  
+  int *errnop, *h_errnop;  
   enum nss_status status;
   enum nss_status (*api_funct)(struct in_addr *, int, int, struct hostent *, char *, size_t, int *, int *);
-  addr = va_arg(ap, const char*);
+  addr = va_arg(ap, const void*);
   len = va_arg(ap, socklen_t);
   af = va_arg(ap, int);
   ret = va_arg(ap, struct hostent*);
   buffer = va_arg(ap, char*);
   buflen = va_arg(ap, size_t);
-  result = va_arg(ap, struct hostent**);
   errnop = va_arg(ap, int*);
+  h_errnop = va_arg(ap, int*);
   api_funct = cb_data;
-  status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, &h_errno);
+  status = api_funct((struct in_addr*)addr, len, af, ret, buffer, buflen, errnop, h_errnop);
   status = __nss_compat_result(status, *errnop);
   if(status == NS_SUCCESS)
   {
     *((struct hostent **)rval) = ret;
-    *result = ret;
+  }else{
+  	*((struct hostent **)rval) = NULL;
   }
-  log_debug("BSDNSS_GETHOSTBYADDR2_r: %d.\n", status);
   return status;
 }
 
@@ -188,15 +186,14 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
 {
   enum nss_status status;
   int (*api_funct)(const char*, const char*, const struct addrinfo*, struct addrinfo**);
-  const char *hostname, *servname;
+  const char *hostname;
   const struct addrinfo *hints;
   struct addrinfo *result = NULL;
   int ret;
   hostname = va_arg(ap, char*);
   hints = va_arg(ap, const struct addrinfo*);
-  servname = va_arg(ap, char*);
   api_funct = cb_data;
-  ret = api_funct(hostname, servname, hints, &result);
+  ret = api_funct(hostname, NULL, hints, &result);
   ret = eai2nss_code(ret, &status);
   if(status == NS_SUCCESS && ret == 0)
   {
@@ -204,7 +201,6 @@ int __bsdnss_getaddrinfo(void *rval, void *cb_data, va_list ap)
   }else{
     rval = NULL;
   }
-  log_debug("BSDNSS: getaddrinfo(%s): %d\n", hostname, status);
   return status;
 }
 
@@ -234,7 +230,6 @@ int __bsdnss_getnameinfo(void *rval, void *cb_data, va_list ap)
     host = NULL;
     serv = NULL;
   }
-  log_debug("BSDNSS: getnameinfo(HOST:%s, SERV:%s): %d\n", host, serv, status);
   return status;
 }
 

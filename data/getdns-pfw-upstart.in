@@ -1,0 +1,27 @@
+description "Add port forwarding [getdns-[errors|config].localhost:80->8080] for getdns error reporting page"
+
+#Multi-user, graphic mode
+start on runlevel 5
+stop on shutdown
+
+script
+	set +e
+	@port_forward_unset@
+	echo "Activation command: @port_forward_set@" >>  /var/log/upstart/getdns-pfw.log
+    @port_forward_set@
+    echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+end script
+
+pre-start script
+	set +e
+	echo "[`date`] : activating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+    echo "Command error code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+end script
+
+pre-stop script
+	set +e
+	echo "[`date`] : unsetting port forwarding for getdns error page" >>  /var/log/upstart/getdns-pfw.log
+    @port_forward_unset@
+    echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+end script
+
