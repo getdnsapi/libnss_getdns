@@ -58,17 +58,33 @@ os="$(uname -s)"
 case $os in
 *BSD*)
 	MODULE_NAME=nss_getdns.so.1
+	#port-forwarding currently not enabled for *BSD
+	port_forward_set=
+	port_forward_unset=
+	AC_SUBST(init_script_start_cmd, "/etc/init.d/getdns-pfw start")
 	;;
 *Linux*)
 	MODULE_NAME=libnss_getdns.so.2
+	IPTABLES_NAT_ADD="iptables -o lo -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	IPTABLES_NAT_DEL="iptables -o lo -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	AC_SUBST(init_script_start_cmd, "service getdns-pfw start")
 	;;
 esac
 
+#Create init scripts for port forwarding activation for error pages
+AC_CONFIG_FILES([data/getdns-pfw-upstart], [mv data/getdns-pfw-upstart conf/getdns-pfw.conf])
+AC_CONFIG_FILES([data/getdns-pfw-sysv], [mv data/getdns-pfw-sysv conf/getdns-pfw])
+#Create default getdns config file
+AC_CONFIG_FILES([data/getdns.conf.example], [mv data/getdns.conf.example conf/getdns.conf])
+#Makefile substitutions
 AC_SUBST(ctx_proxy, $CTX_PROXY)
 AC_SUBST(ctx_proxy_impl, $CTX_PROXY_IMPL)
 AC_SUBST(extra_ldlibs, $EXTRA_LDLIBS)
 AC_SUBST(extra_includes, $EXTRA_DEPS_INCLUDES)
 AC_SUBST(module_name, $MODULE_NAME)
+AC_SUBST(port_forward_set, $IPTABLES_NAT_ADD)
+AC_SUBST(port_forward_unset, $IPTABLES_NAT_DEL)
+
 AC_SUBST(dbus_service_file, net.getdnsapi.StubResolver.service)
 AC_SUBST(dbus_interface_file, net.getdnsapi.StubResolver.xml)
 AC_SUBST(dbus_services_dir, /usr/share/dbus-1/services)
