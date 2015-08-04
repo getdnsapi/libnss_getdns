@@ -20,39 +20,41 @@ LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
 CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O3 -fPIC -Wall
-LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(MODULE_NAME) -Wl,--no-undefined 
+LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(LIBNAME) -Wl,--no-undefined 
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -lcrypto -lssl $(EXTRA_LDLIBS)
 srcdir = @srcdir@
 INSTALL = @INSTALL@
 
 build : $(OBJECTS)
 ifneq ($(CTX_PROXY), )
-	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(MODULE_NAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(LIBNAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 else
-	$(CC) $(OBJECTS) -o $(MODULE_NAME) $(LDFLAGS) $(LDLIBS)
+	$(CC) $(OBJECTS) -o $(LIBNAME) $(LDFLAGS) $(LDLIBS)
 endif
 
 build_tests :
 	$(MAKE) -C $(TEST_DIR)
-	
+		
 test : build_tests
 	$(MAKE) -C $(TEST_DIR) test
 	
-install : $(MODULE_NAME)
+install : $(LIBNAME)
 	mkdir -p $(SERVICE_EXEC_DIR)
-	cp $(MODULE_NAME) $(LIB_PATH)
-	ldconfig -v $(INSTALL_PATH)
-	ln -sf $(LIB_PATH) $(LIB_ALIAS)
+	$(INSTALL) -m 644 $(LIBNAME) $(LIBS_PATH)
+	ldconfig /usr/local/lib
+	ln -sf $(LIBS_PATH)/$(LIBNAME) $(LIB_ALIAS)
 ifeq ($(CTX_PROXY), dbus)
-	$(INSTALL) -m 644 $(srcdir)/data/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)
-	$(INSTALL) -m 644 $(srcdir)/data/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)
+	$(INSTALL) -m 644 $(srcdir)/conf/$(DBUS_SERVICE_FILE) $(DBUS_SERVICES_DIR)
+	$(INSTALL) -m 644 $(srcdir)/conf/$(DBUS_INTERFACE_FILE) $(DBUS_INTERFACES_DIR)
 	$(INSTALL) -m 644  $(srcdir)/$(CONTEXT_DAEMON_EXEC) $(SERVICE_EXEC_DIR)
 endif
 	$(INSTALL) -m 644 $(srcdir)/data/error.html $(SERVICE_EXEC_DIR)
 	$(INSTALL) -m 644 $(srcdir)/data/settings.html $(SERVICE_EXEC_DIR)
-	$(INSTALL) -m 644 $(srcdir)/data/getdns.conf /etc
-	sh ./activate.sh
+	$(INSTALL) -m 644 $(srcdir)/conf/getdns.conf /etc
+	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw.conf /etc/init
+	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw /etc/init.d
+	service getdns-pfw start || /etc/init.d/getdns-pfw start
 	@echo "***"
 	@echo "***  !!! IMPORTANT !!!!  this library uses nsswitch!"
 	@echo "***"
@@ -69,15 +71,13 @@ endif
 	@echo "***"
 	
 uninstall:
-	sh ./activate.sh --reverse
-	yes | rm -rf $(LIB_ALIAS) $(LIB_PATH) $(DBUS_INTERFACES_DIR) $(DBUS_SERVICES_DIR) 
-	ldconfig -v $(INSTALL_PATH)
+	yes | rm -rf $(LIB_ALIAS) $(LIBS_PATH)/$(LIBNAME) $(DBUS_INTERFACES_DIR) $(DBUS_SERVICES_DIR) /etc/init/getdns-pfw.conf /etc/init.d/getdns-pfw $(SERVICE_EXEC_DIR)/$(CONTEXT_DAEMON_EXEC)
 
 obj : 
 	$(CC) *.c $(CFLAGS)
 	
 clean :
-	rm -f *.o *.c~ *.h~ services/*~ services/*.o contexts/*~ contexts/*.o $(MODULE_NAME) $(CONTEXT_DAEMON_EXEC)
+	rm -f *.o *.c~ *.h~ services/*~ services/*.o contexts/*~ contexts/*.o $(LIBNAME) $(CONTEXT_DAEMON_EXEC)
 	$(MAKE) -C $(TEST_DIR) clean
 	
 .PHONY: clean test
