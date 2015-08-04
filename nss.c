@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 #include "logger.h"
 #include "nss_getdns.h"
 #include "opt_parse.h"
@@ -33,11 +34,13 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 	if((*ctx != NULL) && (*ext != NULL) && (last_check != NULL))
 	{
 		struct stat st;
-		if(stat(CONFIG_FILE_LOCAL, &st) != 0)
+		char config_file[256];
+		snprintf(config_file, 256, "%s/%s/%s.conf", getenv("HOME"), ".getdns", CONFIG_FILE_LOCAL);
+		if(stat(config_file, &st) != 0)
 		{
 			log_warning("load_context< %s >", strerror(errno));
-		}else if(difftime(*last_check, st.st_mtime) > 0){
-			log_info("load_context< loading new settings from %s >", CONFIG_FILE_LOCAL);
+		}else if(difftime(st.st_mtime, *last_check) > 0){
+			log_info("load_context< loading new settings from %s >", config_file);
 			*last_check = st.st_mtime;
 			config_update = 1;
 		}
