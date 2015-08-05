@@ -1,20 +1,36 @@
 #! /bin/sh
+### BEGIN INIT INFO
+# Provides:			 getdns-pfw
+# Required-Start:    $network $syslog
+# Required-Stop:     $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:		 0 1 6
+# Short-Description:	 Serve getdns-errors.localhost:8080 on port 80
+# Description:       This script adds port forwarding for getdns-[config|errors].localhost:80->8080 
+#						to display getdns error messages in browsers
+### END INIT INFO
 
 port_forward_unset(){
-	echo "[`date`] : deactivating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
+	log_daemon_msg "[`date`] : purging port forwarding for getdns error page: <<@port_forward_unset@>>"
 	@port_forward_unset@
-	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+	log_end_msg $?
 }
 
 port_forward_set(){
-	echo "[`date`] : activating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
-	echo "Activation command: @port_forward_set@" >>  /var/log/upstart/getdns-pfw.log
 	port_forward_unset
+	log_daemon_msg "[`date`] : activating port forwarding for getdns error page: <<@port_forward_set@>>"
 	@port_forward_set@
-	echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+	log_end_msg $?
 }
 
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+# Exit if not privileged user
 [ "`id -u`" = 0 ] || exit 4
+
 set +e
 umask 0
 case "$1" in

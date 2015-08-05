@@ -54,7 +54,9 @@ endif
 	$(INSTALL) -m 644 $(srcdir)/conf/getdns.conf /etc
 	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw.conf /etc/init
 	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw /etc/init.d
-	service getdns-pfw start || /etc/init.d/getdns-pfw start
+	chmod ugo+x /etc/init.d/getdns-pfw
+	update-rc.d getdns-pfw enable
+	service getdns-pfw start
 	@echo "***"
 	@echo "***  !!! IMPORTANT !!!!  this library uses nsswitch!"
 	@echo "***"

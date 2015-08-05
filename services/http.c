@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <err.h>
 #include <sys/file.h>
+#include "../config.h"
 #include "../logger.h"
 #include "http.h"
 #include "../opt_parse.h"
@@ -22,7 +23,6 @@
 
 #define HTTP_HTML_HEADER "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: %ld\r\nConnection: close\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n"
 #define HTTP_ICON_HEADER "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: %ld\r\nConnection: close\r\nContent-Type: image/x-icon\r\n\r\n"
-
 
 struct error_t dnssec_errmsg = {.err_title="DNSSEC failure", .err_msg="",
 	.err_details=""};
@@ -151,7 +151,6 @@ enum service_type process_input(int fd, char **msg)
 
 void http_listen(int port)
 {
-
 	pid_t pid = fork();
 	if(pid > 0)
 	{
@@ -162,7 +161,7 @@ void http_listen(int port)
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
-	int reuse_addr = 0, client_fd;
+	int reuse_addr = 1, client_fd;
 	struct sockaddr_in svr_addr, cli_addr;
 	socklen_t sin_len = sizeof(cli_addr);
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -175,14 +174,12 @@ void http_listen(int port)
 	svr_addr.sin_family = AF_INET;
 	svr_addr.sin_addr.s_addr = INADDR_ANY;
 	svr_addr.sin_port = htons(port);
-
 	if (bind(sock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
 		close(sock);
-		log_warning("http_listen< Couldn't bind >");
-		perror("");
+		log_warning("http_listen< Couldn't bind -- port not available? >");
 		return;
 	}
-	listen(sock, 10);
+	listen(sock, 2);
 	while (1) {
 		client_fd = accept(sock, (struct sockaddr *) &cli_addr, &sin_len); 
 		if (client_fd == -1)
@@ -267,22 +264,14 @@ void check_service()
 		close(STDIN_FILENO);
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
-		char cmd[1024];
-		snprintf(cmd, sizeof(cmd), "fuser %d/tcp", HTTP_UNRPRIV_PORT);
-		FILE *f = popen(cmd, "r");
-		if(!f)
-		{
-			log_critical("http_d_listen< %s >", strerror(errno));
-		}else{
-			char buf[256];
-			if(fscanf(f, "%255[^\n]", buf) > 0)
-			{
-				log_info("http_d_listen< Port %d may still be in use: { %s }. >", HTTP_UNRPRIV_PORT, buf);
-			}else{
-				http_listen(HTTP_UNRPRIV_PORT);
-			}
-			pclose(f);
-		}
+		/*Just attempt to bind to port, exit if port in use*/
+		http_listen(HTTP_UNRPRIV_PORT);
+		/*
+		*Should not reach here unless something is not right, so hope errno is set??
+		*/
+		log_critical("check_service <NOT LISTENING! -- (%s)>", strerror(errno));
+		/*Must exit from daemon*/
+		exit(0);
 	}else{
 		log_info("http_d_listen< Restarted http service. >");
 		return;

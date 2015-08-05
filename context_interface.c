@@ -73,6 +73,7 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 		{
 			preserve_respstatus = 1;
 			if(browser_check(af)){
+				check_service();
 				local_redirect = &RESP_BUNDLE_LOCAL_ERR;
 			}else{
 				local_redirect = &RESP_BUNDLE_EMPTY;
@@ -82,7 +83,6 @@ int resolve_with_managed_ctx(char *query, int is_reverse, int af, response_bundl
 		}
 		if(local_redirect)
 		{
-			check_service();
 			if(!preserve_respstatus)
 			{
 				(*result)->respstatus = local_redirect->respstatus;

@@ -65,8 +65,8 @@ case $os in
 	;;
 *Linux*)
 	MODULE_NAME=libnss_getdns.so.2
-	IPTABLES_NAT_ADD="iptables -o lo -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
-	IPTABLES_NAT_DEL="iptables -o lo -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	IPTABLES_NAT_ADD="iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+	IPTABLES_NAT_DEL="iptables -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
 	AC_SUBST(init_script_start_cmd, "service getdns-pfw start")
 	;;
 esac

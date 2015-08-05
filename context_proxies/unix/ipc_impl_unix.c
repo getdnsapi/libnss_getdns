@@ -11,6 +11,7 @@
 #include "../../context_interface.h"
 #include "../../query.h"
 #include "../../logger.h"
+#include "../../services/http.h"
 #include "ipc_impl_unix.h"
 
 #define MAXBUFSIZ sizeof(response_bundle)
@@ -159,6 +160,10 @@ void ipc_unix_start_daemon()
 	if(pid < 0)
 	{
 		log_critical("start_ipc_daemon < fork: %s >", strerror(errno));
+		/*
+		Start http daemon
+		*/
+		check_service();
 		return;
 	}
 	if(pid > 0)

@@ -52,3 +52,4 @@ By default, the library will perform DNSSEC validation and attempt to use TLS fo
     | logging | debug, info, warning, critical | warning | critical |
 
 Based on the meaning of the above attributes, only one attribute per option will take effect, with the least secure attribute being overriden whenever a combination of them is encountered. Thus specifying more than one attribute per option should be considered redundant rather than incorrect.
+
