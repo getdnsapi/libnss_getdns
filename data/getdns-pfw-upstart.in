@@ -7,21 +7,21 @@ stop on shutdown
 script
 	set +e
 	@port_forward_unset@
-	echo "Activation command: @port_forward_set@" >>  /var/log/upstart/getdns-pfw.log
+	logger -i "Activation command: @port_forward_set@"
     @port_forward_set@
-    echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+    logger -i "Exit code: `echo $?`"
 end script
 
 pre-start script
 	set +e
-	echo "[`date`] : activating port forwarding for getdns error page" >> /var/log/upstart/getdns-pfw.log
-    echo "Command error code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+	logger -i "[`date`] : activating port forwarding[getdns-errors.localhost:80->8080] for getdns error pages"
+    logger -i "Command error code: `echo $?`"
 end script
 
 pre-stop script
 	set +e
-	echo "[`date`] : unsetting port forwarding for getdns error page" >>  /var/log/upstart/getdns-pfw.log
+	logger -i "[`date`] : unsetting port forwarding for getdns error pages"
     @port_forward_unset@
-    echo "Exit code: `echo $?`" >>  /var/log/upstart/getdns-pfw.log
+    logger -i "Exit code: `echo $?`"
 end script
 
