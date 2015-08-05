@@ -11,16 +11,14 @@
 ### END INIT INFO
 
 port_forward_unset(){
-	log_daemon_msg "[`date`] : purging port forwarding for getdns error page"
-	log_daemon_msg "[iptables -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080]"
+	log_daemon_msg "[`date`] : purging port forwarding for getdns error page: <<iptables -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080>>"
 	iptables -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
 	log_end_msg $?
 }
 
 port_forward_set(){
 	port_forward_unset
-	log_daemon_msg "[`date`] : activating port forwarding for getdns error page"
-	log_daemon_msg "[iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080]"
+	log_daemon_msg "[`date`] : activating port forwarding for getdns error page: <<iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080>>"
 	iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
 	log_end_msg $?
 }
