@@ -61,7 +61,7 @@ case $os in
 	#port-forwarding currently not enabled for *BSD
 	port_forward_set=
 	port_forward_unset=
-	AC_SUBST(init_script_start_cmd, "/etc/init.d/getdns-pfw start")
+	AC_SUBST(init_script_start_cmd, "service getdns-pfw start")
 	;;
 *Linux*)
 	MODULE_NAME=libnss_getdns.so.2
@@ -74,6 +74,9 @@ esac
 #Create init scripts for port forwarding activation for error pages
 AC_CONFIG_FILES([data/getdns-pfw-upstart], [mv data/getdns-pfw-upstart conf/getdns-pfw.conf])
 AC_CONFIG_FILES([data/getdns-pfw-sysv], [mv data/getdns-pfw-sysv conf/getdns-pfw])
+AC_CONFIG_FILES([data/getdns-pfw.sh], [mv data/getdns-pfw.sh conf/getdns-pfw.sh])
+AC_CONFIG_FILES([data/getdns-pfw-systemd], [mv data/getdns-pfw-systemd conf/getdns-pfw.service])
+AC_CONFIG_FILES([data/getdns-pfw-bsd], [mv data/getdns-pfw-bsd conf/getdns-pfw-bsd])
 #Create default getdns config file
 AC_CONFIG_FILES([data/getdns.conf.example], [mv data/getdns.conf.example conf/getdns.conf])
 #Makefile substitutions

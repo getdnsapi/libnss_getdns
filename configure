@@ -4057,7 +4057,7 @@ case $os in
 	#port-forwarding currently not enabled for *BSD
 	port_forward_set=
 	port_forward_unset=
-	init_script_start_cmd="/etc/init.d/getdns-pfw start"
+	init_script_start_cmd="service getdns-pfw start"
 
 	;;
 *Linux*)
@@ -4073,6 +4073,12 @@ esac
 ac_config_files="$ac_config_files data/getdns-pfw-upstart"
 
 ac_config_files="$ac_config_files data/getdns-pfw-sysv"
+
+ac_config_files="$ac_config_files data/getdns-pfw.sh"
+
+ac_config_files="$ac_config_files data/getdns-pfw-systemd"
+
+ac_config_files="$ac_config_files data/getdns-pfw-bsd"
 
 #Create default getdns config file
 ac_config_files="$ac_config_files data/getdns.conf.example"
@@ -4800,6 +4806,9 @@ do
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "data/getdns-pfw-upstart") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-upstart" ;;
     "data/getdns-pfw-sysv") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-sysv" ;;
+    "data/getdns-pfw.sh") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw.sh" ;;
+    "data/getdns-pfw-systemd") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-systemd" ;;
+    "data/getdns-pfw-bsd") CONFIG_FILES="$CONFIG_FILES data/getdns-pfw-bsd" ;;
     "data/getdns.conf.example") CONFIG_FILES="$CONFIG_FILES data/getdns.conf.example" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "test/Makefile") CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
@@ -5357,6 +5366,9 @@ $as_echo "$as_me: $ac_file is unchanged" >&6;}
   case $ac_file$ac_mode in
     "data/getdns-pfw-upstart":F) mv data/getdns-pfw-upstart conf/getdns-pfw.conf ;;
     "data/getdns-pfw-sysv":F) mv data/getdns-pfw-sysv conf/getdns-pfw ;;
+    "data/getdns-pfw.sh":F) mv data/getdns-pfw.sh conf/getdns-pfw.sh ;;
+    "data/getdns-pfw-systemd":F) mv data/getdns-pfw-systemd conf/getdns-pfw.service ;;
+    "data/getdns-pfw-bsd":F) mv data/getdns-pfw-bsd conf/getdns-pfw-bsd ;;
     "data/getdns.conf.example":F) mv data/getdns.conf.example conf/getdns.conf ;;
 
   esac

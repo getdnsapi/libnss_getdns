@@ -1,0 +1,8 @@
+#! /bin/sh
+set +e
+logger -i "flushing port forwarding for getdns error pages"
+@port_forward_unset@
+logger -i "[`date`] : activating port forwarding[getdns-errors.localhost:80->8080] for getdns error pages"
+logger -i "Activation command: @port_forward_set@"
+@port_forward_set@
+logger -i "Exit code: `echo $?`"

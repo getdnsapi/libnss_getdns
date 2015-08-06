@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# PROVIDE: getdns-pfw
+
+name="getdns-pfw"
+start_precmd="this_precmd"
+required_modules="syslog"
+
+this_precmd()
+{
+	set +e
+	iptables -t nat -D OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
+	logger -i "Activation command: iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080"
+    iptables -t nat -A OUTPUT -p tcp --dst 127.127.127.128,127.127.127.127 --dport 80 -j REDIRECT --to-ports 8080
+    logger -i "Exit code: `echo $?`"
+	return 0
+}
+
+echo "80->8080 NAT initialization finished."

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# PROVIDE: getdns-pfw
+
+name="getdns-pfw"
+start_precmd="this_precmd"
+required_modules="syslog"
+
+this_precmd()
+{
+	set +e
+	@port_forward_unset@
+	logger -i "Activation command: @port_forward_set@"
+    @port_forward_set@
+    logger -i "Exit code: `echo $?`"
+	return 0
+}
+
+echo "80->8080 NAT initialization finished."

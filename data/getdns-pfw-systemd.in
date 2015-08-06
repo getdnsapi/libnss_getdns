@@ -1,0 +1,10 @@
+[Unit]
+Description=Add port forwarding [getdns-[errors|config].localhost:80->8080] for getdns error reporting page
+After=network.target syslog.target
+ConditionPathExists=/usr/local/sbin/getdns-pfw.sh
+
+[Service]
+ExecStart=/usr/local/sbin/getdns-pfw.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -39,7 +39,7 @@ build_tests :
 test : build_tests
 	$(MAKE) -C $(TEST_DIR) test
 	
-install : $(LIBNAME)
+install : $(LIBNAME) 
 	mkdir -p $(SERVICE_EXEC_DIR)
 	$(INSTALL) -m 644 $(LIBNAME) $(LIBS_PATH)
 	ldconfig /usr/local/lib
@@ -52,11 +52,31 @@ endif
 	$(INSTALL) -m 644 $(srcdir)/data/error.html $(SERVICE_EXEC_DIR)
 	$(INSTALL) -m 644 $(srcdir)/data/settings.html $(SERVICE_EXEC_DIR)
 	$(INSTALL) -m 644 $(srcdir)/conf/getdns.conf /etc
-	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw.conf /etc/init
-	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw /etc/init.d
-	chmod ugo+x /etc/init.d/getdns-pfw
+	#install BSD-style init script if (*BSD)
+ifeq ($(wildcard /etc/rc.d/), /etc/rc.d/)
+	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw-bsd /etc/rc.d
+	mv /etc/rc.d/getdns-pfw-bsd /etc/rc.d/getdns-pfw
+endif
+	#install SysV script if directory /etc/init.d/ exists (new Linux'es)
+ifeq ($(wildcard /etc/init.d/), /etc/init.d/)
+	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw /etc/init.d
 	update-rc.d getdns-pfw enable
+endif
+	#install Upstart script if directory /etc/init/ exists (even newer Linux'es)
+ifeq ($(wildcard /etc/init/), /etc/init/)
+	$(INSTALL) -m 644 $(srcdir)/conf/getdns-pfw.conf /etc/init
+endif
+	#install something for Systemd if supported
+ifeq ($(wildcard /etc/systemd/system/), /etc/systemd/system/)
+	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw.sh /usr/local/sbin
+	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw.service /etc/systemd/system
+endif
+	#Test-start the getdns-pfw service
+ifneq ($(shell which systemctl),)
+	systemctl start getdns-pfw.service
+else	
 	service getdns-pfw start
+endif
 	@echo "***"
 	@echo "***  !!! IMPORTANT !!!!  this library uses nsswitch!"
 	@echo "***"
