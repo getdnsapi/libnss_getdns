@@ -14,8 +14,8 @@ enum resolv_options
 	DEBUG_WARNING = 1 << 12,
 	DEBUG_INFO = 1 << 13,
 	DEBUG_VERBOSE = 1 << 14,
-	/*Last bit for app-saved preferences*/
-	APP_OVERRIDES = 1 << 15
+	/*Every interface has an IPv6 address*/
+	IFACE_INET6 = 1 << 15
 };
 
 #define MINIMAL_DEFAULTS_OPTION_STR "MIN_DEFAULTS"

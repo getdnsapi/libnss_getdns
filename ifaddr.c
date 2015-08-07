@@ -106,3 +106,25 @@ int resolve_local(const char *query, response_bundle **ret)
 	memset(ipv6_ptr-1, 0, 1);
 	return 0;
 }
+
+int has_ipv6_addresses()
+{
+	struct ifaddrs *ifaddr, *ifa;
+	/*
+	*Get all locally-configured interface addresses.
+	*/
+	if(getifaddrs(&ifaddr) == -1)
+	{
+	   log_critical("resolve_local< getifaddrs failed>");
+	   return 0;
+	}
+	
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+	{
+		if(ifa->ifa_addr && (ifa->ifa_addr->sa_family == AF_INET))
+		{
+			return 0;
+		}
+	}
+	return 1;
+}

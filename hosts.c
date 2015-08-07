@@ -12,6 +12,7 @@
 #include "logger.h"
 #include "nss_getdns.h"
 #include "addr_utils.h"
+#include "opt_parse.h"
 #include "context_interface.h"
 
 #define  UNUSED_PARAM(x) ((void)(x))
@@ -23,6 +24,12 @@ extern int resolve_local(const char*, response_bundle**);
 
 const int IN6_ADDRLEN = sizeof(struct sockaddr_in6);
 const int IN_ADDRLEN = sizeof(struct sockaddr_in);
+
+/*
+*This indicates that all interfaces has an IPv6 address.
+*Otherwise, we assume IPv6 is not supported if one or more interfaces do not have an IPv6.
+*/
+extern int getdns_options;
 
 struct callback_fn_arg
 {
@@ -66,7 +73,7 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 		log_info("extract_addrtuple():error parsing response.");
 		return GETDNS_RETURN_GENERIC_ERROR;
 	}
-	if((af == AF_INET6) || ((af == AF_UNSPEC) && (response->ipv6_count > 0)))
+	if((af == AF_INET6) || ((af == AF_UNSPEC) && (getdns_options & IFACE_INET6) && (response->ipv6_count > 0)))
 	{
 		num_answers = response->ipv6_count;
 		addr_string = response->ipv6;
@@ -91,7 +98,8 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 	result->h_addr_list = (char**)intern_buffer;
 	intern_buffer += sizeof(char*) * (num_answers + 1);
 	buflen -= sizeof(char*) * (num_answers + 1);
-	char *addr_list[num_answers];
+	char **addr_list = malloc(sizeof(char*)*num_answers);
+	assert(addr_list);
 	if(parse_addr_list(addr_string, addr_list, num_answers) != num_answers)
 	{
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
@@ -133,6 +141,7 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 	result->h_aliases = (char**)intern_buffer;
 	result->h_aliases[0] = NULL;	
     *respstatus = response->respstatus;
+    free(addr_list);
 	return GETDNS_RETURN_GOOD;
 }
 
@@ -182,7 +191,8 @@ getdns_return_t add_addrinfo(struct addrinfo **result_ptr, struct addrinfo *hint
 static getdns_return_t parse_addrinfo(char *addr_list_string, const char *cname, const int num_addresses, size_t addrlen, 
 	struct addrinfo **result, struct addrinfo *hints)
 {
-	char *addr_list[num_addresses];
+	char **addr_list = malloc(sizeof(char*)*num_addresses);
+	assert(addr_list);
 	size_t answer_idx;
 	struct addrinfo *result_ptr = NULL;
 	getdns_return_t return_code = GETDNS_RETURN_GENERIC_ERROR;
@@ -203,6 +213,7 @@ static getdns_return_t parse_addrinfo(char *addr_list_string, const char *cname,
 			*result = result_ptr;
 		}
 	}
+	free(addr_list);
 	return return_code;
 }
 
@@ -305,16 +316,19 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
     
     if(response->ipv6_count > 0)
     {
-    	char *addr_list[response->ipv6_count];
+    	char **addr_list = malloc(sizeof(char*)*response->ipv6_count);
+    	assert(addr_list);
     	int num = parse_addr_list(response->ipv6, addr_list, response->ipv6_count);
 		for(rec_count = 0; rec_count < num; ++rec_count)
 		{
 		    add_addrtuple(addr_list[rec_count], AF_INET6);
 		}
+		free(addr_list);
     }
     if(response->ipv4_count > 0)
     {
-    	char *addr_list[response->ipv4_count];
+    	char **addr_list = malloc(sizeof(char*)*response->ipv4_count);
+    	assert(addr_list);
     	int num = parse_addr_list(response->ipv4, addr_list, response->ipv4_count);
 		int addr_idx;
 		for(addr_idx = 0; addr_idx < num; ++addr_idx)
@@ -322,6 +336,7 @@ static getdns_return_t extract_addrtuple(struct gaih_addrtuple **result_addrtupl
 		    add_addrtuple(addr_list[addr_idx], AF_INET);
 		    rec_count++;
 		}
+		free(addr_list);
     }
     assert(idx <= min_space); /*Check if we didn't write past the intended space...*/
     *respstatus = rec_count > 0 ? GETDNS_RESPSTATUS_GOOD : GETDNS_RESPSTATUS_NO_NAME;

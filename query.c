@@ -10,7 +10,14 @@
 #include <getdns/getdns_extra.h>
 #include "logger.h"
 #include "nss_getdns.h"
+#include "opt_parse.h"
 #include "context_interface.h"
+
+/*
+*This indicates that all interfaces has an IPv6 address.
+*Otherwise, we assume IPv6 is not supported if one or more interfaces do not have an IPv6.
+*/
+extern int getdns_options;
 
 #define ASSERT_OR_RETURN(expr) \
 do{	\
@@ -166,7 +173,7 @@ static getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter,
 				(*ret)->ipv4_count++;
 				snprintf(ipv4_ptr, len+1, "%s,", address_str);
 				ipv4_ptr += len;
-			}else if(address_data->size ==  16){
+			}else if((address_data->size ==  16) && ((af_filter == AF_INET6) || (getdns_options & IFACE_INET6))){
 				(*ret)->ipv6_count++;
 				snprintf(ipv6_ptr, len+1, "%s,", address_str);
 				ipv6_ptr += len;

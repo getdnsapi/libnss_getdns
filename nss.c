@@ -18,6 +18,13 @@
 extern int log_level;
 
 /*
+*This indicates that all interfaces has an IPv6 address.
+*Otherwise, we assume IPv6 is not supported if one or more interfaces do not have an IPv6.
+*/
+extern int has_ipv6_addresses();
+int getdns_options;
+
+/*
 *Create/load context.
 *The context should be reused per process.
 *It must therefore be safe to be used for multiple threads.
@@ -51,12 +58,13 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 	*/
 	if( (*ext == NULL) || config_update )
 	{
-		int options = get_local_defaults(CONFIG_FILE_LOCAL);
-		if(!options)
+		getdns_options = get_local_defaults(CONFIG_FILE_LOCAL);
+		if(!getdns_options)
 		{	
-			parse_options(CONFIG_FILE, &options);
+			parse_options(CONFIG_FILE, &getdns_options);
 		}
-		set_log_level(options, &log_level);
+		set_log_level(getdns_options, &log_level);
+		getdns_options |= has_ipv6_addresses();
 		extensions = getdns_dict_create();
 		/*
 		Getdns extensions for doing both IPv4 and IPv6
@@ -64,7 +72,7 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 		return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
 		return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
 		return_code &= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
-		if(options & DNSSEC_SECURE_ONLY)
+		if(getdns_options & DNSSEC_SECURE_ONLY)
 		{
 			return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
 		}
@@ -182,7 +190,9 @@ enum nss_status _nss_getdns_gethostbyname_r (const char *name, struct hostent *r
         char *buffer, size_t buflen, int *errnop, int *h_errnop)
 {
 	log_debug("GETDNS: gethostbyname_r!\n");
-    enum nss_status status = NSS_STATUS_NOTFOUND;
+    enum nss_status status = NSS_STATUS_NOTFOUND;	
+    /* XXX: libc thinks: If we are looking for an IPv6 address and mapping is enabled
+	 by having the RES_USE_INET6 bit in _res.options set, so...  */
     if (_res.options & RES_USE_INET6)
         status = _nss_getdns_gethostbyname3_r (name, AF_INET6, result, buffer, 
         			buflen, errnop, h_errnop, NULL, NULL);
