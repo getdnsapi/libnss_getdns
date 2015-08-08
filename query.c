@@ -13,6 +13,8 @@
 #include "opt_parse.h"
 #include "context_interface.h"
 
+#define GETDNS_IP_BINDATA_SIZE 28
+#define GETDNS_IP6_BINDATA_SIZE 74
 /*
 *This indicates that all interfaces has an IPv6 address.
 *Otherwise, we assume IPv6 is not supported if one or more interfaces do not have an IPv6.
@@ -186,7 +188,7 @@ static getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter,
 	return return_code;
 }
 
-static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  response_bundle **ret)
+static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  char *addr_query, response_bundle **ret)
 {
 	uint32_t respstatus;
 	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
@@ -244,14 +246,23 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 						free(cname);
 					}
 					getdns_bindata *dname;
-					ASSERT_OR_RETURN(getdns_dict_get_bindata(data, "rdata_raw", &dname));
-					char *dname_str;
-					ASSERT_OR_RETURN(getdns_convert_dns_name_to_fqdn(dname, &dname_str));
+					ASSERT_OR_RETURN(getdns_dict_get_bindata(rr, "name", &dname));
+					char *dname_str = strdup(addr_query);
+					ASSERT_OR_RETURN(dname_str);
 					size_t len = strlen(dname_str)+1;
-					(*ret)->ipv4_count++;
-					(*ret)->ipv6_count++;
-					snprintf(dname_ptr, len+1, "%s,", dname_str);
-					snprintf(dname6_ptr, len+1, "%s,", dname_str);
+					if(dname->size == GETDNS_IP_BINDATA_SIZE)
+					{
+						(*ret)->ipv4_count++;
+						snprintf(dname_ptr, len+1, "%s,", dname_str);
+						free(dname_str);
+					}else if(dname->size == GETDNS_IP6_BINDATA_SIZE){
+						(*ret)->ipv6_count++;
+						snprintf(dname6_ptr, len+1, "%s,", dname_str);
+						free(dname_str);
+					}else{
+						free(dname_str);
+						continue; /*Why would we even have this!*/
+					}
 					dname_ptr += len;
 					dname6_ptr += len;
 					free(dname_str);
@@ -271,13 +282,13 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 		return return_code;
 }
 
-static getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, int reverse, int af)
+static getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, req_params *request)
 {
 	if(reverse)
 	{
-		return parse_nameaddr_bundle(response, af, ret);
+		return parse_nameaddr_bundle(response, request->af, request->query, ret);
 	}else{
-		return parse_ipaddr_bundle(response, af, ret);
+		return parse_ipaddr_bundle(response, request->af, ret);
 	}
 }
 
@@ -287,7 +298,7 @@ getdns_return_t do_query(getdns_context *context, getdns_dict *extensions, req_p
 	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
 	if(getdns_query(request->query, request->af, request->reverse, context, extensions, &response) == GETDNS_RETURN_GOOD)
 	{
-		return_code = parse_addr_bundle(response, ret, request->reverse, request->af);
+		return_code = parse_addr_bundle(response, ret, request);
 		//getdns_dict_destroy(response);
 	}else{
 		log_warning("do_query< NULL RESPONSE >");
