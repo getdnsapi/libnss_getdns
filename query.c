@@ -1,3 +1,4 @@
+
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -188,7 +189,7 @@ static getdns_return_t parse_ipaddr_bundle(getdns_dict *response, int af_filter,
 	return return_code;
 }
 
-static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filter,  char *addr_query, response_bundle **ret)
+static getdns_return_t parse_nameaddr_bundle(getdns_dict *response,  char *addr_query, response_bundle **ret)
 {
 	uint32_t respstatus;
 	getdns_return_t return_code = GETDNS_RETURN_MEMORY_ERROR;
@@ -247,25 +248,19 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 					}
 					getdns_bindata *dname;
 					ASSERT_OR_RETURN(getdns_dict_get_bindata(rr, "name", &dname));
-					char *dname_str = strdup(addr_query);
-					ASSERT_OR_RETURN(dname_str);
-					size_t len = strlen(dname_str)+1;
+					size_t len = strlen(addr_query)+1;
 					if(dname->size == GETDNS_IP_BINDATA_SIZE)
 					{
 						(*ret)->ipv4_count++;
-						snprintf(dname_ptr, len+1, "%s,", dname_str);
-						free(dname_str);
+						snprintf(dname_ptr, len, "%s,", addr_query);
+						dname_ptr += len;
 					}else if(dname->size == GETDNS_IP6_BINDATA_SIZE){
 						(*ret)->ipv6_count++;
-						snprintf(dname6_ptr, len+1, "%s,", dname_str);
-						free(dname_str);
+						snprintf(dname6_ptr, len, "%s,", addr_query);
+						dname6_ptr += len;
 					}else{
-						free(dname_str);
-						continue; /*Why would we even have this!*/
+						continue;
 					}
-					dname_ptr += len;
-					dname6_ptr += len;
-					free(dname_str);
 					if(++answer_count >= MAX_NUM_ANSWERS)
 					{
 						break;
@@ -276,7 +271,7 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 	}
 	memset(dname_ptr-1, 0, 1);
 	memset(dname6_ptr-1, 0, 1);
-	return return_code;
+	return GETDNS_RETURN_GOOD;
 	clean_and_return:
 		free(*ret);
 		return return_code;
@@ -284,9 +279,9 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response, int af_filte
 
 static getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, req_params *request)
 {
-	if(reverse)
+	if(request->reverse)
 	{
-		return parse_nameaddr_bundle(response, request->af, request->query, ret);
+		return parse_nameaddr_bundle(response, request->query, ret);
 	}else{
 		return parse_ipaddr_bundle(response, request->af, ret);
 	}
