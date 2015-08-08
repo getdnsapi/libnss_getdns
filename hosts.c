@@ -158,7 +158,7 @@ getdns_return_t add_addrinfo(struct addrinfo **result_ptr, struct addrinfo *hint
 		family = AF_INET6;
 		addrsize = sizeof(struct sockaddr_in6);
 	}else{
-		addrsize = (hints->ai_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+		addrsize = addr_size;
 	}
 	ai = _allocaddrinfo(family); 
 	if(ai == NULL)
