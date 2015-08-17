@@ -19,7 +19,7 @@ ______________________
 
 4. Installing the library
 _________________________
-  - Basic installation: the shell commands `./configure [--with-context-proxy=[unix|dbus|...]]; make; make install' should configure, build and install this library.
+  - Basic installation: the shell commands `./configure [--with-context-proxy=[unix|dbus|...]]; make; make install' should configure, build and install this library. Currently gmake must be used instead of make on FreeBSD.
   - The ``--with-context-proxy`` feature configures the library to use a managed context shared between processes. By default, contexts are created and destroyed per query, which is too inefficient. There are two available options for IPC context management: UNIX sockets (--with-context-proxy=unix), and DBUS (--with-context-proxy=dbus). It is easy to plug in any other by implementing it following the context interface (see examples in contexts/unix and contexts/dbus, and context_interface.h.
   - There is another optional parameter to configure the library for preloading. When preloaded, the library intercepts calls to getaddrinfo() and getnameinfo() to serve them instead of them being handled by libc.
 Use the --enable-api-intercept feature for this mode or try the help menu (-h) to the configure script for more details.
