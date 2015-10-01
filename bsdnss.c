@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #if defined(__FreeBSD__)
 
 #include <stdarg.h>
