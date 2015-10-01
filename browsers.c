@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
