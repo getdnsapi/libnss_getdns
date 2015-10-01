@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include "../services/http.h"
 
 #ifdef HTTP_MAIN

@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include <stdio.h>
 #include <getdns/getdns_extra.h>
 #include <netdb.h>
