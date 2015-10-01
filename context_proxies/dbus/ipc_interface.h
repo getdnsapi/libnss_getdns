@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #ifndef _IPC_DBUS_INTERFACE_H_
 #define _IPC_DBUS_INTERFACE_H_
 #define IPC_SERVICE_NAME  "net.getdnsapi.StubResolver"

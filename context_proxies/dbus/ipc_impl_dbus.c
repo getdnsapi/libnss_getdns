@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include <dbus/dbus.h>
 #include <stdbool.h>
 #include <unistd.h>
