@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include "ipc_impl_unix.h"
 
 #if defined(MAIN)
