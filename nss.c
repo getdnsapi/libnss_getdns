@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>

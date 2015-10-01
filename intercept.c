@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #define __USE_GNU
 #include "config.h"
 #include <arpa/inet.h>

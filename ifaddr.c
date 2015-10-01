@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <sys/socket.h>

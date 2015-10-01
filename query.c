@@ -1,3 +1,4 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
 
 #include <string.h>
 #include <arpa/inet.h>
