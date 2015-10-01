@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #ifndef _BROWSERS_HINTS_H_
 #define _BROWSERS_HINTS_H_
 struct query_hints
