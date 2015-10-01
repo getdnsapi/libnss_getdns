@@ -1,3 +1,5 @@
+// Copyright Verisign, Inc and NLNetLabs.  See LICENSE file for details
+
 #ifndef _HTTP_LOCALHOST_H
 #define _HTTP_LOCALHOST_H
 
