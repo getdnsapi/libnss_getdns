@@ -51,7 +51,7 @@ static int parse_addr_list(char *arg, char **buf_ptr, int num)
 	{
 		return 0;
 	}
-	while((buf_ptr[ret] = strtok_r(NULL, ",", &next)) != NULL && (num > ret++));
+	while((buf_ptr[ret] = strtok_r(NULL, ",", &next)) != NULL && (num > ++ret));
 	return ret == num ? ret : 0;
 }
 
