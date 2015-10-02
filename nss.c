@@ -103,7 +103,15 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 				getdns_context_destroy(context);
 			return return_code;
 		}
-		getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
+		if(getdns_options & TLS_REQUIRE){
+		    /*
+		    TLS used in STUB mode only
+		    */
+		    getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_STUB);
+		    getdns_context_set_dns_transport(context, GETDNS_TRANSPORT_TLS);
+		}else{
+		    getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
+		}
 		//getdns_context_set_use_threads(context, 1);
 		*ctx = context;
 	}
