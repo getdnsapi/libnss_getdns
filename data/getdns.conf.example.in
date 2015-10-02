@@ -1,7 +1,7 @@
 #This is a comment.
 dnssec: validate
 #Attributes can be specified separately. And lines may start with a whitespace
- 	dnssec: secure_only
+# 	dnssec: secure_only
 tls: require_tls disable_tls
 #It should be ok to have duplicates.
 tls: require_tls disable_tls
