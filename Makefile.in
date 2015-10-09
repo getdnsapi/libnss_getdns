@@ -60,7 +60,7 @@ endif
 	#install SysV script if directory /etc/init.d/ exists (new Linux'es)
 ifeq ($(wildcard /etc/init.d/), /etc/init.d/)
 	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw /etc/init.d
-	update-rc.d getdns-pfw enable
+	update-rc.d getdns-pfw enable || true
 endif
 	#install Upstart script if directory /etc/init/ exists (even newer Linux'es)
 ifeq ($(wildcard /etc/init/), /etc/init/)
