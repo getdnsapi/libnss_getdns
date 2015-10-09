@@ -36,7 +36,7 @@ CTX_PROXY_IMPL=""
 AC_ARG_WITH([context-proxy],
   AS_HELP_STRING([--with-context-proxy=relative_path_to_dir],  [Configure with a context proxy implemented in the directory. (default: none).]), 
   [withval="yes" AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], "$with_context_proxy", [Use a managed getdns context via a context proxy]) 
-  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"], [])
+  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"], [])
 
 if test x_$CTX_PROXY = x_dbus; then
 	AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 

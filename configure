@@ -3984,7 +3984,7 @@ cat >>confdefs.h <<_ACEOF
 #define HAVE_CONTEXT_PROXY "$with_context_proxy"
 _ACEOF
 
-  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*.c"
+  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"
 fi
 
 

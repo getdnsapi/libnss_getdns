@@ -18,16 +18,16 @@ LIBS_PATH = @libdir@
 LIBNAME = getdns_shim-1.15.so
 LIB_PATH = $(LIBS_PATH)/$(LIBNAME)
 LIB_ALIAS = $(LIBS_PATH)/$(MODULE_NAME)
-OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c))
-CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -gdwarf-2 -O3 -fPIC -Wall
-LDFLAGS = -L/usr/local/lib -shared -rdynamic -Wl,-soname,$(LIBNAME) -Wl,--no-undefined 
+OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c services/*.c context_proxies/$(CTX_PROXY)/ipc_impl_$(CTX_PROXY).c))
+CFLAGS = $(DEFS) -I/usr/local/include $(EXTRA_DEPS_INCLUDES) -g -fPIC -Wall
+LDFLAGS = -L/usr/local/lib
 LDLIBS = -lm -lgetdns -lunbound -lidn -lldns -lcrypto -lssl $(EXTRA_LDLIBS)
 srcdir = @srcdir@
 INSTALL = @INSTALL@
 
 build : $(OBJECTS)
 ifneq ($(CTX_PROXY), )
-	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(LIBNAME) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+	$(CC) $(OBJECTS) $(CTX_PROXY_IMPL) -o $(LIBNAME) $(CFLAGS) $(LDFLAGS) -shared -rdynamic -Wl,-soname,$(LIBNAME) -Wl,--no-undefined $(LDLIBS)
 	$(CC) -DMAIN $(OBJECTS) $(CTX_PROXY_IMPL) -o $(CONTEXT_DAEMON_EXEC) $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 else
 	$(CC) $(OBJECTS) -o $(LIBNAME) $(LDFLAGS) $(LDLIBS)
@@ -99,7 +99,7 @@ obj :
 	$(CC) *.c $(CFLAGS)
 	
 clean :
-	rm -f *.o *.c~ *.h~ services/*~ services/*.o contexts/*~ contexts/*.o $(LIBNAME) $(CONTEXT_DAEMON_EXEC)
+	rm -f $(OBJECTS) *.c~ *.h~ services/*~ services/*.o contexts/*~ contexts/*.o $(LIBNAME) $(CONTEXT_DAEMON_EXEC)
 	$(MAKE) -C $(TEST_DIR) clean
 	
 .PHONY: clean test
