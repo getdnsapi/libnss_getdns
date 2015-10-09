@@ -51,7 +51,7 @@ ifeq ($(CTX_PROXY), dbus)
 endif
 	$(INSTALL) -m 644 $(srcdir)/data/error.html $(SERVICE_EXEC_DIR)
 	$(INSTALL) -m 644 $(srcdir)/data/settings.html $(SERVICE_EXEC_DIR)
-	$(INSTALL) -m 644 $(srcdir)/conf/getdns.conf /etc
+	if [ ! -f /etc/getdns.conf ] ; then $(INSTALL) -m 644 $(srcdir)/conf/getdns.conf /etc ; fi
 	#install BSD-style init script if (*BSD)
 ifeq ($(wildcard /etc/rc.d/), /etc/rc.d/)
 	$(INSTALL) -m 755 $(srcdir)/conf/getdns-pfw-bsd /etc/rc.d
