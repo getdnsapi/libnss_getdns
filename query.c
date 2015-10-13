@@ -278,7 +278,7 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response,  char *addr_
 		return return_code;
 }
 
-static getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, req_params *request)
+getdns_return_t parse_addr_bundle(getdns_dict *response, response_bundle **ret, req_params *request)
 {
 	if(request->reverse)
 	{
