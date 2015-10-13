@@ -448,6 +448,14 @@ void ipc_unix_listen()
 	}
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, ADDRESS);
+
+	if (connect(s.fd, (struct sockaddr *)(&server_addr),
+	    sizeof(server_addr.sun_family) + sizeof(ADDRESS)) >= 0) {
+		log_info("ipc_unix_listen< another listener already running >");
+		/* Another server listening already */
+		close(s.fd);
+		return;
+	}
 	unlink(ADDRESS);
     
 	if (bind(s.fd, (struct sockaddr *)(&server_addr),
