@@ -91,7 +91,7 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
         return GETDNS_RETURN_WRONG_TYPE_REQUESTED;
 	}
-	if(num_answers < 1){
+	if(!reverse && num_answers < 1){
 		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
         return GETDNS_RETURN_GENERIC_ERROR;
     }
@@ -100,50 +100,54 @@ getdns_return_t extract_hostent(struct hostent *result, response_bundle *respons
 	result->h_addr_list = (char**)intern_buffer;
 	intern_buffer += sizeof(char*) * (num_answers + 1);
 	buflen -= sizeof(char*) * (num_answers + 1);
-	char **addr_list = malloc(sizeof(char*)*num_answers);
-	assert(addr_list);
-	if(parse_addr_list(addr_string, addr_list, num_answers) != num_answers)
-	{
-		*respstatus = GETDNS_RESPSTATUS_NO_NAME;
-        return GETDNS_RETURN_GENERIC_ERROR;
-	}
-	if(buflen <= 0)
-	{
-		log_warning("GETDNS: buffer too small.\n");
-		return GETDNS_RETURN_MEMORY_ERROR;
-	}
-	for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
-    {
-		char tmp_name[result->h_length];
-		memset(tmp_name, 0, result->h_length);
-		inet_pton(af, addr_list[answer_idx], tmp_name);
-		size_t len = sizeof(tmp_name);
-		if(buflen <= len)
+
+	if (reverse) {
+		size_t cname_len = strlen(response->cname) + 2;
+		if(buflen <= cname_len)
 		{
 			log_warning("GETDNS: buffer too small.\n");
 			return GETDNS_RETURN_MEMORY_ERROR;
 		}
-		memcpy(intern_buffer, tmp_name, len);        
-		result->h_addr_list[addr_idx++] = intern_buffer;  
-		intern_buffer += len;
-		buflen -= len;
-    }
-    
-	size_t cname_len = strlen(response->cname) + 2;
-	if(buflen <= cname_len)
-	{
-		log_warning("GETDNS: buffer too small.\n");
-		return GETDNS_RETURN_MEMORY_ERROR;
+		memcpy(intern_buffer, response->cname, cname_len-2);
+		memset(intern_buffer + cname_len - 1, 0, sizeof(char));
+		result->h_name = intern_buffer;
+		intern_buffer += cname_len;
+		buflen -= cname_len;
+		result->h_aliases = (char**)intern_buffer;
+		result->h_aliases[0] = NULL;	
+	} else {
+
+		char **addr_list = malloc(sizeof(char*)*num_answers);
+		assert(addr_list);
+		if(parse_addr_list(addr_string, addr_list, num_answers) != num_answers)
+		{
+			*respstatus = GETDNS_RESPSTATUS_NO_NAME;
+		return GETDNS_RETURN_GENERIC_ERROR;
+		}
+		if(buflen <= 0)
+		{
+			log_warning("GETDNS: buffer too small.\n");
+			return GETDNS_RETURN_MEMORY_ERROR;
+		}
+		for (answer_idx = 0; answer_idx < num_answers; ++answer_idx)
+	    {
+			char tmp_name[result->h_length];
+			memset(tmp_name, 0, result->h_length);
+			inet_pton(af, addr_list[answer_idx], tmp_name);
+			size_t len = sizeof(tmp_name);
+			if(buflen <= len)
+			{
+				log_warning("GETDNS: buffer too small.\n");
+				return GETDNS_RETURN_MEMORY_ERROR;
+			}
+			memcpy(intern_buffer, tmp_name, len);        
+			result->h_addr_list[addr_idx++] = intern_buffer;  
+			intern_buffer += len;
+			buflen -= len;
+	    }
+	    free(addr_list);
 	}
-	memcpy(intern_buffer, response->cname, cname_len-2);
-	memset(intern_buffer + cname_len - 1, 0, sizeof(char));
-	result->h_name = intern_buffer;
-	intern_buffer += cname_len;
-	buflen -= cname_len;
-	result->h_aliases = (char**)intern_buffer;
-	result->h_aliases[0] = NULL;	
     *respstatus = response->respstatus;
-    free(addr_list);
 	return GETDNS_RETURN_GOOD;
 }
 
@@ -368,7 +372,7 @@ int resolve(const char *query, struct callback_fn_arg *userarg)
 		}else{
 			resolve_with_managed_ctx((char*)query, 0, af, &response);
 		}
-		if((response == NULL) || ((response->ipv4_count + response->ipv6_count) < 1))
+		if((response == NULL) || (result_ptr->addr_type != REV_HOSTENT && (response->ipv4_count + response->ipv6_count) < 1))
 		{
 			if(response)
 			{
