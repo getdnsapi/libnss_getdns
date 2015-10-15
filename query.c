@@ -244,7 +244,7 @@ static getdns_return_t parse_nameaddr_bundle(getdns_dict *response,  char *addr_
 					char *cname = extract_cname(data, "ptrdname");
 					if(cname)
 					{
-						strncpy((*ret)->cname, cname, strlen(cname)-1);
+						strncpy((*ret)->cname, cname, strlen(cname)+1);
 						free(cname);
 					}
 					getdns_bindata *dname;
