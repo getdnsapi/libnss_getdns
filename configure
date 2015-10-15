@@ -1323,7 +1323,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-context-proxy=relative_path_to_dir
                           Configure with a context proxy implemented in the
-                          directory. (default: none).
+                          directory. (default: unix).
 
 Some influential environment variables:
   CC          C compiler command
@@ -3972,21 +3972,37 @@ done
 
 
 # Build with dbus-daemon for IPC
-CTX_PROXY=
 EXTRA_DEPS_INCLUDES=""
 EXTRA_LDLIBS=""
-CTX_PROXY_IMPL=""
 
 # Check whether --with-context-proxy was given.
 if test "${with_context_proxy+set}" = set; then :
-  withval=$with_context_proxy; withval="yes"
-cat >>confdefs.h <<_ACEOF
-#define HAVE_CONTEXT_PROXY "$with_context_proxy"
-_ACEOF
-
-  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"
+  withval=$with_context_proxy;
 fi
 
+
+case "x$with_context_proxy" in
+    xno)
+    	;;
+    x|xyes)
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_CONTEXT_PROXY 1
+_ACEOF
+
+	CTX_PROXY="unix"
+	CTX_PROXY_IMPL="$(pwd)/context_proxies/$CTX_PROXY/*server.c"
+	;;
+    *)
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_CONTEXT_PROXY 1
+_ACEOF
+
+	CTX_PROXY="$with_context_proxy"
+	CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"
+	;;
+esac
 
 if test x_$CTX_PROXY = x_dbus; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dbus_message_set_auto_start in -ldbus-1" >&5

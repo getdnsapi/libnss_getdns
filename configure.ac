@@ -29,14 +29,24 @@ AC_FUNC_ALLOCA
 AC_CHECK_FUNCS([memmove memset strchr strndup strtol])
 
 # Build with dbus-daemon for IPC
-CTX_PROXY=
 EXTRA_DEPS_INCLUDES=""
 EXTRA_LDLIBS=""
-CTX_PROXY_IMPL=""
-AC_ARG_WITH([context-proxy],
-  AS_HELP_STRING([--with-context-proxy=relative_path_to_dir],  [Configure with a context proxy implemented in the directory. (default: none).]), 
-  [withval="yes" AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], "$with_context_proxy", [Use a managed getdns context via a context proxy]) 
-  CTX_PROXY=$with_context_proxy CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"], [])
+AC_ARG_WITH([context-proxy], AS_HELP_STRING([--with-context-proxy=relative_path_to_dir],  [Configure with a context proxy implemented in the directory. (default: unix).]))
+
+case "x$with_context_proxy" in
+    xno)
+    	;;
+    x|xyes)
+	AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], [1], [Use a managed getdns context via a context proxy])
+	CTX_PROXY="unix"
+	CTX_PROXY_IMPL="$(pwd)/context_proxies/$CTX_PROXY/*server.c"
+	;;
+    *)
+	AC_DEFINE_UNQUOTED([HAVE_CONTEXT_PROXY], [1], [Use a managed getdns context via a context proxy])
+	CTX_PROXY="$with_context_proxy"
+	CTX_PROXY_IMPL="$(pwd)/context_proxies/$with_context_proxy/*server.c"
+	;;
+esac
 
 if test x_$CTX_PROXY = x_dbus; then
 	AC_CHECK_LIB([dbus-1], [dbus_message_set_auto_start], 
