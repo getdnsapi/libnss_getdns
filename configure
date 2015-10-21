@@ -4050,6 +4050,12 @@ as_fn_error 1 "dbus not available on this system. Please install dbus before con
 See \`config.log' for more details" "$LINENO" 5; }
 fi
 
+elif test x_$CTX_PROXY = x_unix ; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_HTTP_SERVICE 1
+_ACEOF
+
 fi
 
 

@@ -28,6 +28,9 @@
 /* Use a managed getdns context via a context proxy */
 #undef HAVE_CONTEXT_PROXY
 
+/* Run http service in the async context proxy */
+#undef HAVE_HTTP_SERVICE
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 

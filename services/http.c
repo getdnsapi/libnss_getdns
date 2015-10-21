@@ -110,15 +110,14 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 
 enum service_type process_input(int fd, char **msg)
 {
-	size_t len, bufsiz = 2048;
+	ssize_t len, bufsiz = 2048;
 	char buf[bufsiz];
 	memset(buf, 0, bufsiz);
 	int ret = 0;
 	enum service_type req_type = HOME_PAGE;
 	*msg = NULL;
-	while( (len = read(fd, buf, bufsiz)) > 0)
+	while( (len = read(fd, buf, bufsiz-1)) > 0)
 	{
-		ret |= parse_keyval_options(buf);
 		if(strstr(buf, "favicon"))
 		{
 			return FAVICON;

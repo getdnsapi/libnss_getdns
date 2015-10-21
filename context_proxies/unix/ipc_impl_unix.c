@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include "../../nss_getdns.h"
 #include "../../logger.h"
 #include "../../context_interface.h"
@@ -310,6 +311,9 @@ static void lookup_response_cb(getdns_context *context,
 		log_warning("ipc_unix_listen< RESPONSE_BUNDLE is null >");
 		conn->reply = &RESP_BUNDLE_EMPTY;
 	}
+	if (conn->req.reverse) {
+		log_debug("ipc_unix_listen< reversed reply: %s >", conn->reply->cname);
+	}
 	conn->ev.write_cb = write_reply_cb;
 
 	log_debug("ipc_unix_listen< schedule write for fd: %d >", conn->cfd);
@@ -384,7 +388,7 @@ static void read_request_cb(void *userarg)
 
 			log_warning("ipc_unix_listen< getdns_hostname: %d>", r);
 		else {
-			log_debug("ipc_unix_listen< read: request for "
+			log_debug("ipc_unix_listen< read: reversed request for "
 			          "%s scheduled: %"PRIu64">"
 			         , conn->req.query, transaction_id);
 
@@ -429,6 +433,123 @@ static void accept_client_cb(void *userarg)
 		close(cfd);
 }
 
+#ifdef HAVE_HTTP_SERVICE
+typedef struct http_server_state {
+	getdns_eventloop_event ev;
+	int                    fd;
+	my_eventloop           *loop;
+} http_server_state;
+
+typedef struct http_client_state {
+	getdns_eventloop_event ev;
+	int                    fd;
+	http_server_state      *s;
+	char                   *content;
+	char                   *header;
+} http_client_state;
+
+static void write_http_reply_cb(void *userarg)
+{
+	http_client_state *c = userarg;
+	size_t             wsz;
+
+	assert(c);
+
+	my_eventloop_clear(&c->s->loop->base, &c->ev);
+	c->ev.write_cb = NULL;
+
+	if ((wsz = write(c->fd, c->header, strlen(c->header)) !=
+	    strlen(c->header)))
+		log_warning("http_listen< header not completely written >");
+
+	else if ((wsz = write(c->fd, c->content, strlen(c->content)) !=
+	    strlen(c->content)))
+		log_warning("http_listen< content not completely written >");
+
+	else if ((wsz = write(c->fd, "\r\n", strlen("\r\n")) !=
+	    strlen("\r\n")))
+		log_warning("http_listen< end not completely written >");
+
+	close(c->fd);
+	if (c->header)
+		free(c->header);
+	if (c->content)
+		free(c->content);
+	free(c);
+}
+
+static void read_http_request_cb(void *userarg)
+{
+	http_client_state *c = userarg;
+	enum service_type  srvc;
+	char *status_msg = NULL;
+
+	assert(c);
+
+	my_eventloop_clear(&c->s->loop->base, &c->ev);
+	c->ev.read_cb = NULL;
+
+	log_debug("http_listen< processing input from %d >", c->fd);
+	srvc = process_input(c->fd, &status_msg);
+	log_debug("http_listen< input from %d processed >", c->fd);
+	load_page(srvc, &c->header, &c->content, status_msg != NULL ? status_msg : "");
+	if (c->content == NULL || c->header == NULL) {
+		log_warning("http_listen< Error reading from client connection... >");
+		close(c->fd);
+		if (c->header)
+			free(c->header);
+		if (c->content)
+			free(c->content);
+		free(c);
+		return;
+	}
+	c->ev.write_cb = write_http_reply_cb;
+
+	log_debug("http_listen< schedule write for fd: %d >", c->fd);
+	(void) my_eventloop_schedule(&c->s->loop->base, c->fd, -1, &c->ev);
+}
+
+static void accept_http_client_cb(void *userarg)
+{
+	http_server_state *s = userarg;
+
+	struct sockaddr_in peer_addr;
+	socklen_t          peer_addr_size;
+	int                cfd;
+	http_client_state *c = NULL;
+	int                flags;
+
+	assert(s);
+
+	if ((cfd = accept(s->fd, (struct sockaddr *)(&peer_addr), &peer_addr_size)) < 0)
+		log_warning("http_listen< accept: %s >", strerror(errno));
+
+	else if ((flags = fcntl(cfd, F_GETFL)) < 0)
+		log_warning("http_listen< get flags %s >", strerror(errno));
+
+	else if (fcntl(cfd, F_SETFL, flags | O_NONBLOCK) < 0)
+		log_warning("http_listen< set flags %s >", strerror(errno));
+
+	else if (!(c = calloc(1, sizeof(http_client_state))))
+		log_warning("http_listen< accept: memory error >");
+	else {
+		c->ev.userarg = c;
+		c->ev.read_cb = read_http_request_cb;
+		c->fd         = cfd;
+		c->s          = s;
+
+		log_debug("http_listen< schedule read for fd: %d >", cfd);
+		(void) my_eventloop_schedule(&s->loop->base, cfd, -1, &c->ev);
+		return; /* Success */
+	}
+	if (c)
+		free(c);
+	if (cfd >= 0)
+		close(cfd);
+}
+
+#endif
+
 void ipc_unix_listen()
 {
 	static int          singleton = 0;
@@ -472,6 +593,39 @@ void ipc_unix_listen()
 		log_critical("ipc_unix_listen< setting eventloop to context: %d>", r);
 
 	else {
+#ifdef HAVE_HTTP_SERVICE
+		static http_server_state h;
+		int                      one = 1;
+		struct sockaddr_in       http_addr;
+
+		(void) memset(&h, 0, sizeof(h));
+		h.loop = &s.loop;
+
+		http_addr.sin_family = AF_INET;
+		http_addr.sin_addr.s_addr = INADDR_ANY;
+		http_addr.sin_port = htons(HTTP_UNRPRIV_PORT);
+		
+		if ((h.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+			log_critical("http_listen< socket: %s >", strerror(errno));
+
+		else if (setsockopt(h.fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int)) < 0)
+			log_critical("http_listen< setsockopt: %s >", strerror(errno));
+
+		else if (bind(h.fd, (struct sockaddr *) &http_addr, sizeof(http_addr)) < 0) {
+			log_critical("http_listen< bind: %s >", strerror(errno));
+			close(h.fd);
+
+		} else if (listen(h.fd, BACKLOG_SIZE) < 0) {
+			log_critical("http_listen< listen: %s >", strerror(errno));
+			close(h.fd);
+
+		} else {
+			h.ev.userarg = &h;
+			h.ev.read_cb = accept_http_client_cb;
+
+			(void) my_eventloop_schedule(&h.loop->base, h.fd, -1, &h.ev);
+		}
+#endif
 		s.ev.userarg = &s;
 		s.ev.read_cb = accept_client_cb;
 
@@ -509,6 +663,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
         if(errnum == ECONNREFUSED || errnum == ENOENT)
         {
         	ipc_unix_start_daemon();
+		usleep(1000);
         	log_info("ipc_unix_proxy_resolve< Retrying to connect to %s >", ADDRESS);
         	if(connect(sockfd, (struct sockaddr *)(&server_addr), socklen) < 0)
         	{
@@ -554,24 +709,6 @@ getdns_context_proxy ctx_proxy = &ipc_unix_proxy_resolve;
 void ipc_unix_start_daemon()
 {
 	/*
-	*This function can be called from any process, 
-	*so make sure here that the daemon is created in a detached process
-	*/
-	pid_t pid = fork();
-	if(pid < 0)
-	{
-		log_critical("start_ipc_daemon < fork: %s >", strerror(errno));
-		/*
-		Start http daemon
-		*/
-		check_service();
-		return;
-	}
-	if(pid > 0)
-	{
-		return;
-	}
-	/*
 	*New process will create a daemon process and exit.
 	*/
 	pid_t sessid /*Session ID (We will fork from then exit parent.)*/;
@@ -579,13 +716,13 @@ void ipc_unix_start_daemon()
 	/*Make sure fork succeeded*/
 	if(ipc_pid < 0)
 	{
-		log_critical("ipc_dbus_listen< Error forking. >");
+		log_critical("ipc_unix_listen< Error forking. >");
 		exit(EXIT_FAILURE);
 	}
 	/*Exit parent process*/
 	if(ipc_pid > 0)
 	{
-		log_info("ipc_dbus_listen< Entering daemon mode. >");
+		log_info("ipc_unix_listen< Entering daemon mode. >");
 		exit(EXIT_SUCCESS);
 	}
 	/*
@@ -597,12 +734,12 @@ void ipc_unix_start_daemon()
 	sessid = setsid();
 	if(sessid < 0)
 	{
-		log_critical("ipc_dbus_listen< setsid() failed >");
+		log_critical("ipc_unix_listen< setsid() failed >");
 		exit(EXIT_FAILURE);
 	}
 	if( (chdir("/")) < 0)
 	{
-		log_critical("ipc_dbus_listen< chdir() failed >");
+		log_critical("ipc_unix_listen< chdir() failed >");
 		exit(EXIT_FAILURE);
 	}
 	close(STDIN_FILENO);

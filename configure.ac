@@ -53,6 +53,8 @@ if test x_$CTX_PROXY = x_dbus; then
  	[EXTRA_DEPS_INCLUDES="$(pkg-config --cflags dbus-glib-1)" EXTRA_LDLIBS="-ldbus-1"], 
  	AC_MSG_FAILURE([dbus not available on this system. Please install dbus before continuing.], 1),
  	[])
+elif test x_$CTX_PROXY = x_unix ; then
+	AC_DEFINE_UNQUOTED([HAVE_HTTP_SERVICE], [1], [Run http service in the async context proxy])
 fi
 
 
