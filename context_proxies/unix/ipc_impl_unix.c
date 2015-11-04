@@ -437,6 +437,9 @@ static void accept_client_cb(void *userarg)
 typedef struct http_server_state {
 	getdns_eventloop_event ev;
 	int                    fd;
+	getdns_context         *context;
+	getdns_dict            *extensions;
+	time_t                 last_changed;
 	my_eventloop           *loop;
 } http_server_state;
 
@@ -446,6 +449,8 @@ typedef struct http_client_state {
 	http_server_state      *s;
 	char                   *content;
 	char                   *header;
+	char                   *host;
+	char                    statusmsg[2048];
 } http_client_state;
 
 static void write_http_reply_cb(void *userarg)
@@ -471,6 +476,8 @@ static void write_http_reply_cb(void *userarg)
 		log_warning("http_listen< end not completely written >");
 
 	close(c->fd);
+	if (c->host)
+		free(c->host);
 	if (c->header)
 		free(c->header);
 	if (c->content)
@@ -478,11 +485,90 @@ static void write_http_reply_cb(void *userarg)
 	free(c);
 }
 
+static void http_response_cb(getdns_context *context,
+	getdns_callback_type_t callback_type, getdns_dict *response,
+	void *userarg, getdns_transaction_t t)
+{
+	http_client_state   *c = userarg;
+	getdns_return_t      r;
+	uint32_t             status;
+	enum service_type    srvc = ERROR_PAGE;
+
+	log_debug("http_listen< response for transaction %"PRIu64" >", t);
+
+	if (!c) {
+		log_critical("http_response_cb< no userarg: %"PRIu64" >", t);
+		return;
+	}
+	if (callback_type != GETDNS_CALLBACK_COMPLETE) {
+		log_warning("http_listen< callback type %d: %"PRIu64" >"
+		           , callback_type, t);
+		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+		               , "callback type %d: %"PRIu64
+			       , callback_type, t);
+
+	} else if (!response) {
+		log_warning("http_listen< NULL response>");
+		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+		               , "NULL response");
+
+	} else if ((r = getdns_dict_get_int(response, "status", &status))) {
+		log_warning("http_listen< could not get status>");
+		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+		               , "could not get status");
+
+	} else if (status == GETDNS_RESPSTATUS_ALL_BOGUS_ANSWERS) {
+                (void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+                               , "<h2>Could not securely resolve %s</h2><hr/>"
+			         "<p>REASON: ALL_BOGUS_ANSWERS"
+				 "<fieldset><legend>DNSSEC status</legend>"
+				 "BOGUS</fieldset></p>", c->host);
+
+	} else if (status == GETDNS_RESPSTATUS_NO_SECURE_ANSWERS) {
+                (void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+                               , "<h2>Could not securely resolve %s</h2><hr/>"
+			         "<p>REASON: NO_SECURE_ANSWERS"
+				 "<fieldset><legend>DNSSEC status</legend>"
+				 "INSECURE</fieldset></p>", c->host);
+
+	} else if ((r = getdns_dict_get_int(response, "/replies_tree/0/dnssec_status", &status))) {
+		log_warning("http_listen< could not get dnssec_status>");
+		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+		               , "could not get status");
+
+	} else if (status == GETDNS_DNSSEC_BOGUS) {
+                (void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+                               , "<h2>Could not securely resolve %s</h2><hr/>"
+			         "<p>REASON: Bogus answer"
+				 "<fieldset><legend>DNSSEC status</legend>"
+				 "BOGUS</fieldset></p>", c->host);
+	} else {
+		srvc = HOME_PAGE;
+                (void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+                               , "<hr/><hr/><p>%s resolved to <h3>%s</h3></p>"
+			       , c->host, "an address");
+	}
+	log_debug("http_listen< input from %d processed >", c->fd);
+	load_page(srvc, &c->header, &c->content, c->statusmsg);
+	if (c->content == NULL || c->header == NULL)
+		log_warning("http_listen< Error reading from client connection... >");
+	c->ev.write_cb = write_http_reply_cb;
+	log_debug("http_listen< schedule write for fd: %d >", c->fd);
+	(void) my_eventloop_schedule(&c->s->loop->base, c->fd, -1, &c->ev);
+
+	if (response)
+		getdns_dict_destroy(response);
+}
+
+
 static void read_http_request_cb(void *userarg)
 {
-	http_client_state *c = userarg;
-	enum service_type  srvc;
-	char *status_msg = NULL;
+	http_client_state   *c = userarg;
+	enum service_type    srvc = HOME_PAGE;
+	char                *line = NULL, line_buf[2048];
+	FILE                *in = NULL;
+	getdns_return_t      r;
+	getdns_transaction_t transaction_id;
 
 	assert(c);
 
@@ -490,21 +576,64 @@ static void read_http_request_cb(void *userarg)
 	c->ev.read_cb = NULL;
 
 	log_debug("http_listen< processing input from %d >", c->fd);
-	srvc = process_input(c->fd, &status_msg);
-	log_debug("http_listen< input from %d processed >", c->fd);
-	load_page(srvc, &c->header, &c->content, status_msg != NULL ? status_msg : "");
-	if (c->content == NULL || c->header == NULL) {
-		log_warning("http_listen< Error reading from client connection... >");
-		close(c->fd);
-		if (c->header)
-			free(c->header);
-		if (c->content)
-			free(c->content);
-		free(c);
+	/*
+	 * Following logic loosly based on process_input() from services/http.c
+	 */
+	if (!(in = fdopen(dup(c->fd), "r"))) {
+		log_warning("http_listen< could not open stream for fd: %d >", c->fd);
+		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+		               , "could not open stream for fd: %d", c->fd );
+
+		srvc = ERROR_PAGE;
+
+	} else while ((line = fgets(line_buf, sizeof(line_buf), in))) {
+		if (strstr(line, "favicon"))
+			srvc = FAVICON;
+		else if (strncmp(line, "POST / HTTP/", 12) == 0)
+			srvc = FORM_DATA;
+		else if (strncmp(line, "Host: ", 6) != 0)
+			continue;
+		line[strcspn(line + 6, ":\n\r") + 6] = 0;
+		if (!(c->host = strdup(line + 6))) {
+			log_warning("http_listen< could not strdup: %s >", line + 6);
+			(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+				       , "could not strdup: %s", line + 6);
+			srvc = ERROR_PAGE;
+			break;
+
+		}
+		if ((r = getdns_address(
+		    c->s->context, c->host, c->s->extensions, c,
+		    &transaction_id, http_response_cb))) {
+
+			log_warning("http_listen< getdns_address: %d >", r);
+			(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
+				       , "getdns_address: %d", r );
+			srvc = ERROR_PAGE;
+			break;
+		}
+		log_debug("http_listen< read: request for "
+			  "%s scheduled: %"PRIu64">"
+			 , c->host, transaction_id);
+
+		fclose(in);
+		/* Read remaining data */
+		while (read(c->fd, line_buf, sizeof(line_buf)) == sizeof(line_buf))
+			;
 		return;
 	}
+	if (in)
+		fclose(in);
+	if (line) {
+		/* Read remaining data */
+		while (read(c->fd, line_buf, sizeof(line_buf)) == sizeof(line_buf))
+			;
+	}
+	log_debug("http_listen< input from %d processed >", c->fd);
+	load_page(srvc, &c->header, &c->content, c->statusmsg);
+	if (c->content == NULL || c->header == NULL)
+		log_warning("http_listen< Error reading from client connection... >");
 	c->ev.write_cb = write_http_reply_cb;
-
 	log_debug("http_listen< schedule write for fd: %d >", c->fd);
 	(void) my_eventloop_schedule(&c->s->loop->base, c->fd, -1, &c->ev);
 }
@@ -599,7 +728,9 @@ void ipc_unix_listen()
 		struct sockaddr_in       http_addr;
 
 		(void) memset(&h, 0, sizeof(h));
-		h.loop = &s.loop;
+		h.context    =  s.context;
+		h.extensions =  s.extensions;
+		h.loop       = &s.loop;
 
 		http_addr.sin_family = AF_INET;
 		http_addr.sin_addr.s_addr = INADDR_ANY;

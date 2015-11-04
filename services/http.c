@@ -113,7 +113,6 @@ enum service_type process_input(int fd, char **msg)
 	ssize_t len, bufsiz = 2048;
 	char buf[bufsiz];
 	memset(buf, 0, bufsiz);
-	int ret = 0;
 	enum service_type req_type = HOME_PAGE;
 	*msg = NULL;
 	while( (len = read(fd, buf, bufsiz-1)) > 0)
@@ -142,10 +141,6 @@ enum service_type process_input(int fd, char **msg)
 		}
 		if(len < bufsiz)
 			break;
-	}
-	if(ret > 0)
-	{
-		save_options(ret, CONFIG_FILE_LOCAL, 1);
 	}
 	return req_type;
 }
