@@ -5,6 +5,7 @@ enum resolv_options
 {
 	DNSSEC_VALIDATE = 1, /* (1 << 0) */
 	DNSSEC_SECURE_ONLY = 2, /* (1 << 1) */
+	DNSSEC_ROADBLOCK_AVOIDANCE = 4, /* (1 << 2) */
 	/*Options 0 to 4 are reserved for DNSSEC*/
 	TLS_DISABLE = 1 << 5,
 	TLS_PREFER = 1 << 6,
@@ -23,6 +24,7 @@ enum resolv_options
 #define DNSSEC_OPTION_STR "dnssec"
 #define DNSSEC_ATTR_VALIDATE "validate"
 #define DNSSEC_ATTR_SECURE_ONLY "secure_only"
+#define DNSSEC_ATTR_ROADBLOCK_AVOIDANCE "roadblock_avoidance"
 #define TLS_OPTION_STR "tls"
 #define TLS_ATTR_DISABLE "disable_tls"
 #define TLS_ATTR_PREFER "prefer_tls"

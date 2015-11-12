@@ -72,11 +72,15 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 		Getdns extensions for doing both IPv4 and IPv6
 		*/
 		return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
+		return_code |= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
+		return_code |= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
 		if(getdns_options & DNSSEC_SECURE_ONLY)
 		{
-			return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
+			return_code |= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
+		}
+		if(getdns_options & DNSSEC_ROADBLOCK_AVOIDANCE)
+		{
+			return_code |= getdns_dict_set_int(extensions, "dnssec_roadblock_avoidance", GETDNS_EXTENSION_TRUE);
 		}
 		if(return_code != GETDNS_RETURN_GOOD)
 		{

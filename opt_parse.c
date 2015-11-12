@@ -15,7 +15,7 @@
 int log_level = LOG_LEVELS_VERBOSE;
 
 /*DNSSEC preferences*/
-const char* dnssec_atstrings[] = {DNSSEC_ATTR_VALIDATE, DNSSEC_ATTR_SECURE_ONLY};
+const char* dnssec_atstrings[] = {DNSSEC_ATTR_VALIDATE, DNSSEC_ATTR_SECURE_ONLY,DNSSEC_ATTR_ROADBLOCK_AVOIDANCE};
 const int dnssec_atflags[] = {DNSSEC_VALIDATE, DNSSEC_SECURE_ONLY};
 const int dnssec_attr_num = sizeof dnssec_atstrings/ sizeof(char*);
 /*Transport mode preferences*/
