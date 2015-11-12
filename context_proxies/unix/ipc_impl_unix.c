@@ -791,6 +791,9 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
     {
     	int errnum = errno;
         log_info("ipc_unix_proxy_resolve< connect(%s): %s >", ADDRESS, strerror(errnum));
+#ifdef DAEMON_ONLY_MODE
+	return -1;
+#else
         if(errnum == ECONNREFUSED || errnum == ENOENT)
         {
         	ipc_unix_start_daemon();
@@ -805,6 +808,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
         	log_critical("ipc_unix_proxy_resolve< Exiting with error: %s : %d >", strerror(errno), errnum);
         	return -1;
         }
+#endif
     }
     req_params request = {.reverse=type, .af=af};
     memset(request.query, 0, sizeof(request.query));

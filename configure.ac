@@ -57,6 +57,14 @@ elif test x_$CTX_PROXY = x_unix ; then
 	AC_DEFINE_UNQUOTED([HAVE_HTTP_SERVICE], [1], [Run http service in the async context proxy])
 fi
 
+AC_ARG_ENABLE(daemon-only-mode, AC_HELP_STRING([--disable-daemon-only-mode], [Disable the lookup and https support services through a seperate daemon process only.  Beware!: Disabling will cause calling processes to fork() and run as lookup/http services. (default is enable)]))
+case "$enable_daemon_only_mode" in
+        no)
+                ;;
+        yes|*)
+                AC_DEFINE_UNQUOTED([DAEMON_ONLY_MODE], [1], [Define this to enable lookup and http services to be run by a separate daemon.])
+                ;;
+esac
 
 # Specify build information
 PRELOAD_OPTION="no"

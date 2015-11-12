@@ -147,6 +147,9 @@ enum service_type process_input(int fd, char **msg)
 
 void http_listen(int port)
 {
+#ifdef DAEMON_ONLY_MODE
+	return;
+#endif
 	pid_t pid = fork();
 	if(pid > 0)
 	{
@@ -252,6 +255,9 @@ int get_dnssec_info(char *query, char **status_msg)
 
 void check_service()
 {
+#ifdef DAEMON_MODE
+	return;
+#endif
 	pid_t c_pid = fork();
 	if( c_pid == 0)
 	{

@@ -8,6 +8,10 @@
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
 
+/* Define this to enable lookup and http services to be run by a separate
+   daemon. */
+#undef DAEMON_ONLY_MODE
+
 /* Configure the library for LD_PRELOADing (to intercept API functions before
    libc.) */
 #undef ENABLE_API_INTERCEPT

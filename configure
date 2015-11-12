@@ -695,6 +695,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_context_proxy
+enable_daemon_only_mode
 enable_api_intercept
 '
       ac_precious_vars='build_alias
@@ -1316,6 +1317,11 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --disable-daemon-only-mode
+                          Disable the lookup and https support services
+                          through a seperate daemon process only. Beware!:
+                          Disabling will cause calling processes to fork() and
+                          run as lookup/http services. (default is enable)
  --enable-api-intercept  Configure the library for preloading (to intercept API functions before libc)
 
 Optional Packages:
@@ -4058,6 +4064,22 @@ _ACEOF
 
 fi
 
+# Check whether --enable-daemon-only-mode was given.
+if test "${enable_daemon_only_mode+set}" = set; then :
+  enableval=$enable_daemon_only_mode;
+fi
+
+case "$enable_daemon_only_mode" in
+        no)
+                ;;
+        yes|*)
+
+cat >>confdefs.h <<_ACEOF
+#define DAEMON_ONLY_MODE 1
+_ACEOF
+
+                ;;
+esac
 
 # Specify build information
 PRELOAD_OPTION="no"
