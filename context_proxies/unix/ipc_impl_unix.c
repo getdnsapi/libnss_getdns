@@ -819,7 +819,7 @@ int ipc_unix_proxy_resolve(char* query, int type, int af, response_bundle **resu
         return -1;
     }
     char buf[MAXBUFSIZ];
-    size_t len;
+    ssize_t len;
     if( (len = recv(sockfd, buf, MAXBUFSIZ, 0) ) <= 0)
     {
     	log_warning("ipc_unix_proxy_resolve< recv: %s >", strerror(errno));
