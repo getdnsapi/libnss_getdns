@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "../../nss_getdns.h"
 #include "../../logger.h"
 #include "../../context_interface.h"
@@ -451,6 +452,7 @@ typedef struct http_client_state {
 	char                   *header;
 	char                   *host;
 	char                    statusmsg[2048];
+	enum service_type       srvc;
 } http_client_state;
 
 static void write_http_reply_cb(void *userarg)
@@ -690,6 +692,7 @@ void ipc_unix_listen()
 		log_critical("ipc_unix_listen< only one listening daemon allowed >");
 		exit(EXIT_FAILURE);
 	}
+	signal(SIGPIPE, SIG_IGN);
 	(void) memset(&s, 0, sizeof(s));
 
 	if ((s.fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
