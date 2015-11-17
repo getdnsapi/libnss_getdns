@@ -12,7 +12,7 @@
 
 #define _GNU_SOURCE
 
-int log_level = LOG_LEVELS_VERBOSE;
+int log_level = LOG_LEVELS_CRITICAL;
 
 /*DNSSEC preferences*/
 const char* dnssec_atstrings[] = {DNSSEC_ATTR_VALIDATE, DNSSEC_ATTR_SECURE_ONLY, DNSSEC_ATTR_ROADBLOCK_AVOIDANCE};
@@ -248,8 +248,6 @@ int get_local_defaults(char *label)
 
 void set_log_level(int options, int *level)
 {
-		*level = LOG_LEVELS_VERBOSE;
-		return;
 	if(options & DEBUG_VERBOSE)
 	{
 		*level = LOG_LEVELS_VERBOSE;
