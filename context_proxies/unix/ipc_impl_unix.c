@@ -465,9 +465,15 @@ static void write_http_reply_cb(void *userarg)
 	my_eventloop_clear(&c->s->loop->base, &c->ev);
 	c->ev.write_cb = NULL;
 
-	if ((wsz = write(c->fd, c->header, strlen(c->header)) !=
+	if (!c->header)
+		log_warning("http_listen< Not http headers in reply >");
+
+	else if ((wsz = write(c->fd, c->header, strlen(c->header)) !=
 	    strlen(c->header)))
 		log_warning("http_listen< header not completely written >");
+
+	else if (!c->content)
+		log_warning("http_listen< Not http content in reply >");
 
 	else if ((wsz = write(c->fd, c->content, strlen(c->content)) !=
 	    strlen(c->content)))
@@ -494,7 +500,6 @@ static void http_response_cb(getdns_context *context,
 	http_client_state   *c = userarg;
 	getdns_return_t      r;
 	uint32_t             status;
-	enum service_type    srvc = ERROR_PAGE;
 
 	log_debug("http_listen< response for transaction %"PRIu64" >", t);
 
@@ -545,13 +550,13 @@ static void http_response_cb(getdns_context *context,
 				 "<fieldset><legend>DNSSEC status</legend>"
 				 "BOGUS</fieldset></p>", c->host);
 	} else {
-		srvc = HOME_PAGE;
+		c->srvc = HOME_PAGE;
                 (void) snprintf( c->statusmsg, sizeof(c->statusmsg)
                                , "<hr/><hr/><p>%s resolved to <h3>%s</h3></p>"
 			       , c->host, "an address");
 	}
 	log_debug("http_listen< input from %d processed >", c->fd);
-	load_page(srvc, &c->header, &c->content, c->statusmsg);
+	load_page(c->srvc, &c->header, &c->content, c->statusmsg);
 	if (c->content == NULL || c->header == NULL)
 		log_warning("http_listen< Error reading from client connection... >");
 	c->ev.write_cb = write_http_reply_cb;
@@ -566,7 +571,6 @@ static void http_response_cb(getdns_context *context,
 static void read_http_request_cb(void *userarg)
 {
 	http_client_state   *c = userarg;
-	enum service_type    srvc = HOME_PAGE;
 	char                *line = NULL, line_buf[2048];
 	FILE                *in = NULL;
 	getdns_return_t      r;
@@ -576,6 +580,7 @@ static void read_http_request_cb(void *userarg)
 
 	my_eventloop_clear(&c->s->loop->base, &c->ev);
 	c->ev.read_cb = NULL;
+	c->srvc = HOME_PAGE;
 
 	log_debug("http_listen< processing input from %d >", c->fd);
 	/*
@@ -586,21 +591,23 @@ static void read_http_request_cb(void *userarg)
 		(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
 		               , "could not open stream for fd: %d", c->fd );
 
-		srvc = ERROR_PAGE;
+		c->srvc = ERROR_PAGE;
 
 	} else while ((line = fgets(line_buf, sizeof(line_buf), in))) {
-		if (strstr(line, "favicon"))
-			srvc = FAVICON;
-		else if (strncmp(line, "POST / HTTP/", 12) == 0)
-			srvc = FORM_DATA;
-		else if (strncmp(line, "Host: ", 6) != 0)
+		if (strstr(line, "favicon")) {
+			c->srvc = FAVICON;
+			continue;
+		} else if (strncmp(line, "POST / HTTP/", 12) == 0) {
+			c->srvc = FORM_DATA;
+			continue;
+		} else if (strncmp(line, "Host: ", 6) != 0)
 			continue;
 		line[strcspn(line + 6, ":\n\r") + 6] = 0;
 		if (!(c->host = strdup(line + 6))) {
 			log_warning("http_listen< could not strdup: %s >", line + 6);
 			(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
 				       , "could not strdup: %s", line + 6);
-			srvc = ERROR_PAGE;
+			c->srvc = ERROR_PAGE;
 			break;
 
 		}
@@ -611,7 +618,7 @@ static void read_http_request_cb(void *userarg)
 			log_warning("http_listen< getdns_address: %d >", r);
 			(void) snprintf( c->statusmsg, sizeof(c->statusmsg)
 				       , "getdns_address: %d", r );
-			srvc = ERROR_PAGE;
+			c->srvc = ERROR_PAGE;
 			break;
 		}
 		log_debug("http_listen< read: request for "
@@ -632,7 +639,7 @@ static void read_http_request_cb(void *userarg)
 			;
 	}
 	log_debug("http_listen< input from %d processed >", c->fd);
-	load_page(srvc, &c->header, &c->content, c->statusmsg);
+	load_page(c->srvc, &c->header, &c->content, c->statusmsg);
 	if (c->content == NULL || c->header == NULL)
 		log_warning("http_listen< Error reading from client connection... >");
 	c->ev.write_cb = write_http_reply_cb;
