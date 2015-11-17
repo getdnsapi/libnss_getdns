@@ -17,6 +17,7 @@
 #include "../../query.h"
 #include "../../logger.h"
 #include "../../services/http.h"
+#include "../../opt_parse.h"
 #include "ipc_impl_unix.h"
 
 
@@ -575,12 +576,13 @@ static void read_http_request_cb(void *userarg)
 	FILE                *in = NULL;
 	getdns_return_t      r;
 	getdns_transaction_t transaction_id;
+	int                  options;
 
 	assert(c);
 
 	my_eventloop_clear(&c->s->loop->base, &c->ev);
 	c->ev.read_cb = NULL;
-	c->srvc = HOME_PAGE;
+	c->srvc = ERROR_PAGE;
 
 	log_debug("http_listen< processing input from %d >", c->fd);
 	/*
@@ -611,7 +613,12 @@ static void read_http_request_cb(void *userarg)
 			break;
 
 		}
-		if ((r = getdns_address(
+		if (strcasecmp(c->host, "getdns-config.localhost") == 0) {
+			if (c->srvc != FORM_DATA)
+				c->srvc = HOME_PAGE;
+			break;
+
+		} else if ((r = getdns_address(
 		    c->s->context, c->host, c->s->extensions, c,
 		    &transaction_id, http_response_cb))) {
 
@@ -630,6 +637,19 @@ static void read_http_request_cb(void *userarg)
 		while (read(c->fd, line_buf, sizeof(line_buf)) == sizeof(line_buf))
 			;
 		return;
+	}
+	if (c->srvc == FORM_DATA) {
+		/* Skip to empty line */
+		while ((line = fgets(line_buf, sizeof(line_buf), in)))
+			if (strcspn(line, "\n\r") == 0)
+				break;
+		if (line) {
+			options = 0;
+			while ((line = fgets(line_buf, sizeof(line_buf), in)))
+				options |= parse_keyval_options(line);
+			if (options)
+				save_options(options, CONFIG_FILE_LOCAL, 1);
+		}
 	}
 	if (in)
 		fclose(in);
