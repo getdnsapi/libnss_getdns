@@ -39,6 +39,10 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 	getdns_return_t return_code = GETDNS_RETURN_GOOD;
 	getdns_dict *extensions = NULL;
 	getdns_context *context = NULL;
+	static getdns_transport_list_t tls_require_l[] = { GETDNS_TRANSPORT_TLS };
+	static getdns_transport_list_t tls_prefer_l[] = { GETDNS_TRANSPORT_TLS, GETDNS_TRANSPORT_TCP, GETDNS_TRANSPORT_UDP };
+
+
 	int config_update = 0;
 	if((*ctx != NULL) && (*ext != NULL) && (last_check != NULL))
 	{
@@ -72,11 +76,15 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 		Getdns extensions for doing both IPv4 and IPv6
 		*/
 		return_code = getdns_dict_set_int(extensions, "return_both_v4_and_v6", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
-		return_code &= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
+		return_code |= getdns_dict_set_int(extensions, "dnssec_return_status", GETDNS_EXTENSION_TRUE);
+		return_code |= getdns_dict_set_int(extensions, "dnssec_return_validation_chain", GETDNS_EXTENSION_TRUE);
 		if(getdns_options & DNSSEC_SECURE_ONLY)
 		{
-			return_code &= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
+			return_code |= getdns_dict_set_int(extensions, "dnssec_return_only_secure", GETDNS_EXTENSION_TRUE);
+		}
+		if(getdns_options & DNSSEC_ROADBLOCK_AVOIDANCE)
+		{
+			return_code |= getdns_dict_set_int(extensions, "dnssec_roadblock_avoidance", GETDNS_EXTENSION_TRUE);
 		}
 		if(return_code != GETDNS_RETURN_GOOD)
 		{
@@ -108,7 +116,12 @@ getdns_return_t load_context(getdns_context **ctx, getdns_dict **ext, time_t *la
 		    TLS used in STUB mode only
 		    */
 		    getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_STUB);
-		    getdns_context_set_dns_transport(context, GETDNS_TRANSPORT_TLS);
+		    getdns_context_set_dns_transport_list(context,
+		        sizeof(tls_require_l) / sizeof(*tls_require_l), tls_require_l);
+		}else if (getdns_options & TLS_PREFER){
+		    getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_STUB);
+		    getdns_context_set_dns_transport_list(context,
+		        sizeof(tls_prefer_l) / sizeof(*tls_prefer_l), tls_prefer_l);
 		}else{
 		    getdns_context_set_resolution_type(context, GETDNS_RESOLUTION_RECURSING);
 		}
