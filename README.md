@@ -31,12 +31,12 @@ Use the --enable-api-intercept feature for this mode or try the help menu (-h) t
 
 5. Configuration
 __________________________
-  - Enabling the library:
-The module is most stable with a separate daemon processing requests for all processes and threads using the nsswitch service.
-Currently the library is configured to be only usable with the running separate daemon process.
-This can be disabled by using the ```-disable-daemon-only-mode``` to ```configure```, however beware that the library will then be much less stable.
+  - Running the daemon:
+The module is most stable with a separate daemon process, handling requests for all processes and threads using the nsswitch service.
+Currently the library is configured to be only usable with the separate daemon process.
+This can be disabled by using the ```--disable-daemon-only-mode``` to ```configure```, however beware that the library will then be much less stable.
 This separate process will be compiled as the ```getdns_daemon``` program.
-
+  - Enabling the library:
 The library can be enabled via nsswitch for platforms that implement the name service switch interface, or by preloading. For the nsswitch option, simply replace the "dns" source for the "hosts" database by "getdns" in /etc/nsswitch.conf.
   - Configurring the library:
 A configuration file (/etc/getdns.conf) will contain settings to override the library's default for DNSSEC and privacy.
