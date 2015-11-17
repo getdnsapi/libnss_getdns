@@ -110,15 +110,13 @@ void load_page(enum service_type srv_rq, char **header, char **content, char *st
 
 enum service_type process_input(int fd, char **msg)
 {
-	size_t len, bufsiz = 2048;
+	ssize_t len, bufsiz = 2048;
 	char buf[bufsiz];
 	memset(buf, 0, bufsiz);
-	int ret = 0;
 	enum service_type req_type = HOME_PAGE;
 	*msg = NULL;
-	while( (len = read(fd, buf, bufsiz)) > 0)
+	while( (len = read(fd, buf, bufsiz-1)) > 0)
 	{
-		ret |= parse_keyval_options(buf);
 		if(strstr(buf, "favicon"))
 		{
 			return FAVICON;
@@ -144,15 +142,14 @@ enum service_type process_input(int fd, char **msg)
 		if(len < bufsiz)
 			break;
 	}
-	if(ret > 0)
-	{
-		save_options(ret, CONFIG_FILE_LOCAL, 1);
-	}
 	return req_type;
 }
 
 void http_listen(int port)
 {
+#ifdef DAEMON_ONLY_MODE
+	return;
+#endif
 	pid_t pid = fork();
 	if(pid > 0)
 	{
@@ -258,6 +255,9 @@ int get_dnssec_info(char *query, char **status_msg)
 
 void check_service()
 {
+#ifdef DAEMON_MODE
+	return;
+#endif
 	pid_t c_pid = fork();
 	if( c_pid == 0)
 	{

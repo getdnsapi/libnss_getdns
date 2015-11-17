@@ -51,7 +51,7 @@ By default, the library will perform DNSSEC validation and attempt to use TLS fo
     
     | Option | Attributes | Default | Always Implied |
     | -------- | ------------ | -------- | ----------|
-    | dnssec | validate, secure_only | validate | validate |
+    | dnssec | validate, secure_only, roadblock_avoidance | validate | validate |
     | tls   | disable_tls , prefer_tls,  require_tls | prefer_tls | N/A |
     | logging | debug, info, warning, critical | warning | critical |
 
